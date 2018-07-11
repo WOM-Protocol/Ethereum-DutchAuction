@@ -17,7 +17,7 @@ contract ApproveAndCallFallBack {
 
 // ------------------------------------------------------------------------
 // Standard ERC20 Token Contract.
-// Fixed Supply with burn capabilities
+// Non-fixed supply with burnable and mintable capabilities
 // ------------------------------------------------------------------------
 contract ERC20BurnableAndMintable is ERC20Interface{
     using SafeMath for uint;
