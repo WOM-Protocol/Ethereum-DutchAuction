@@ -5,7 +5,7 @@
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/wom-token/WOMDaPP/master/images/womLogo.png?token=AecS8KpHLW--STPwwQhL9OYnfjsuHQH_ks5bTsOHwA%3D%3D" alt="WOMToken logo"/>
-</p>v
+</p>
 
 ---
 
