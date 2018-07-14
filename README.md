@@ -17,23 +17,23 @@ Contracts are written in `solidity` and built with the Ethereum framework `truff
 
 # WOM DaPP Development
 You can view our current documentation for our Smart Contracts here:
-[https://github.com/wom-token/WOMDaPP/tree/master/truffle](https://github.com/wom-token/WOMDaPP/tree/master/truffle)
+[https://github.com/wom-token/WOMDaPP/tree/master/truffle](https://github.com/wom-token/WOMDaPP/tree/master/truffle).  
 If you're a techie check out our Solidity contracts here:
-[https://github.com/wom-token/WOMDaPP/tree/master/truffle/contracts](https://github.com/wom-token/WOMDaPP/tree/master/truffle/contracts)
+[https://github.com/wom-token/WOMDaPP/tree/master/truffle/contracts](https://github.com/wom-token/WOMDaPP/tree/master/truffle/contracts).  
 
 
 # WOM Documents
-You can read the current WOMToken light paper here: [https://uploads-ssl.webflow.com/5a5741a320870d0001d8658d/5b4750a7a0fccf0318d8a02f_WOM-Token-Light-Paper-v5.0%20small.pdf](https://uploads-ssl.webflow.com/5a5741a320870d0001d8658d/5b4750a7a0fccf0318d8a02f_WOM-Token-Light-Paper-v5.0%20small.pdf).
+You can read the current WOMToken light paper here: [https://uploads-ssl.webflow.com/5a5741a320870d0001d8658d/5b4750a7a0fccf0318d8a02f_WOM-Token-Light-Paper-v5.0%20small.pdf](https://uploads-ssl.webflow.com/5a5741a320870d0001d8658d/5b4750a7a0fccf0318d8a02f_WOM-Token-Light-Paper-v5.0%20small.pdf).  
 You can read the current WOMToken business check here:
-[https://uploads-ssl.webflow.com/5a5741a320870d0001d8658d/5b4753fdee75f159f7397336_WOM-Token-Business-Deck-2.6.2%20small.pdf](https://uploads-ssl.webflow.com/5a5741a320870d0001d8658d/5b4753fdee75f159f7397336_WOM-Token-Business-Deck-2.6.2%20small.pdf).
+[https://uploads-ssl.webflow.com/5a5741a320870d0001d8658d/5b4753fdee75f159f7397336_WOM-Token-Business-Deck-2.6.2%20small.pdf](https://uploads-ssl.webflow.com/5a5741a320870d0001d8658d/5b4753fdee75f159f7397336_WOM-Token-Business-Deck-2.6.2%20small.pdf).  
 
 # Contact and Additional Information
-Check out our website for more information on Rocket Pool.  
+Check out our website for more information on WOMToken.  
 
-Contact email: [info@womtoken.io](info@womtoken.io)
+Contact email: [info@womtoken.io](info@womtoken.io)  
 
 Twitter: [https://twitter.com/womtoken](https://twitter.com/womtoken)  
 
-Medium: [https://medium.com/wom-token](https://medium.com/wom-token)
+Medium: [https://medium.com/wom-token](https://medium.com/wom-token)  
 
-Join our Telegram channel! [https://t.me/womtokenofficial](https://t.me/womtokenofficial)
+Join our Telegram channel! [https://t.me/womtokenofficial](https://t.me/womtokenofficial)  
