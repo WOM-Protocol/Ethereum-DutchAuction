@@ -4,7 +4,7 @@
 # Architecture
 
 <p align="center">
-  <img src="" alt="WOM Architecture"/>
+  <img src="https://raw.githubusercontent.com/wom-token/WOMDaPP/master/images/ArchitectureFirstIteration.png?token=AecS8J-Byu3fxOy2EkqxVufyb9bdI_1Mks5bUssQwA%3D%3D" alt="WOM Architecture"/>
 </p>
 
 
@@ -62,6 +62,18 @@ ProfilePortal.sol is where .....
 
 ## ProfileAccess
 ProfileAccess.sol is used by users to...  
+
+## ContentCuratorPortal
+ContentCuratorPortal.sol is used by users to...  
+
+## ContentCreatorPortal
+ContentCreatorPortal.sol is used by users to...  
+
+## ValueCreationFund
+ValueCreationFund.sol is used by users to...  
+
+## BrandPortal
+BrandPortal.sol is used by users to...  
 
 
 ## OracleManager
