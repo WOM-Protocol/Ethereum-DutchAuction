@@ -7,6 +7,12 @@
   <img src="https://raw.githubusercontent.com/wom-token/WOMDaPP/master/images/ArchitectureFirstIteration.png?token=AecS8J-Byu3fxOy2EkqxVufyb9bdI_1Mks5bUssQwA%3D%3D" alt="WOM Architecture"/>
 </p>
 
+# Upgradability
+All contracts are built to be upgradeable by storing long-term data in a simple storage contract, while short-term data and complex logic is handled in their own respective contracts. The contracts can be upgraded at any time without losing access to the valuable long-term data. To upgrade a contract the owners will go through a multi-signature process that requires them to agree on the address of the replacing contract.  
+
+# multi-signature Ownership
+All critical functions that may result in the movement of Ether/WOM or important data changes can be paused/unpaused by the owners of the platform. The platform is currently written to have 3 owners who must have a consensus for any critical functions to be called. Using this consensus agreement removes the risk involved in having one Ethereum wallet gain control over the whole platform.
+
 
 ## ContractManager
 ContractManager.sol is where all current contracts are registered in the WOM platform. The Database contract will not allow anybody to change the data unless the caller is registered in the ContractManager contract. To add or remove contracts from the platform a multi-sig agreement from the owners is required. As long as ContractManager is able to add new contracts, it will be upgradeable itself.

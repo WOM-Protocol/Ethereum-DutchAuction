@@ -13,4 +13,20 @@
 
 Unlike traditional marketing techniques, WOM rewards users and content creatures through the power of word of mouth.  WOM utilizes the power of Smart Contracts, to create a self-regulating decentralized network that rewards users based on mathematics, and not human judgement nor error.   
 
-Contracts are written in `solidity` and built with the Ethereum framework `truffle`. This project is currently in alpha and undergoing heavy work.
+Contracts are written in `solidity` and built with the Ethereum framework `truffle`. This project is currently in production stage and is undergoing heavy work.
+
+# WOM Documentation
+You can read the current WOMToken light paper here: [https://uploads-ssl.webflow.com/5a5741a320870d0001d8658d/5b4750a7a0fccf0318d8a02f_WOM-Token-Light-Paper-v5.0%20small.pdf](https://uploads-ssl.webflow.com/5a5741a320870d0001d8658d/5b4750a7a0fccf0318d8a02f_WOM-Token-Light-Paper-v5.0%20small.pdf).
+You can read the current WOMToken business check here:
+[https://uploads-ssl.webflow.com/5a5741a320870d0001d8658d/5b4753fdee75f159f7397336_WOM-Token-Business-Deck-2.6.2%20small.pdf](https://uploads-ssl.webflow.com/5a5741a320870d0001d8658d/5b4753fdee75f159f7397336_WOM-Token-Business-Deck-2.6.2%20small.pdf).
+
+# Contact and Additional Information
+Check out our website for more information on Rocket Pool.  
+
+Contact email: [info@womtoken.io](info@womtoken.io)
+
+Twitter: [https://twitter.com/womtoken](https://twitter.com/womtoken)  
+
+Medium: [https://medium.com/wom-token](https://medium.com/wom-token)
+
+Join our Telegram channel! [https://t.me/womtokenofficial](https://t.me/womtokenofficial)
