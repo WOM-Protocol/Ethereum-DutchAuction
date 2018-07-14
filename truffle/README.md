@@ -106,6 +106,18 @@ OracleManager.sol is where the users will initiate, and pay for an [Oraclize](ht
 * ProfileAccess=(database.address)
 > ContractManager.addContract('SocialProfileRegistrar', SocialProfileRegistrar.address)
 
+* ValueCreationFund=(database.address)
+> ContractManager.addContract('ValueCreationFund', ValueCreationFund.address)
+
+* ContentCreatorPortal=(database.address, ValueCreationFund.address)
+> ContractManager.addContract('ContentCreatorPortal', ContentCreatorPortal.address)
+
+* ContentCuratorPortal=(database.address, ValueCreationFund.address)
+> ContractManager.addContract('ContentCuratorPortal', ContentCuratorPortal.address)
+
+* BrandPortal=(database.address, ValueCreationFund.address)
+> ContractManager.addContract('BrandPortal', BrandPortal.address)
+
 * oraclizeAPI_05: args=(N/A)
 
 * OracleManager: args=(database.address)
