@@ -15,7 +15,14 @@ Unlike traditional marketing techniques, WOM rewards users and content creatures
 
 Contracts are written in `solidity` and built with the Ethereum framework `truffle`. This project is currently in production stage and is undergoing heavy work.
 
-# WOM Documentation
+# WOM DaPP Development
+You can view our current documentation for our Smart Contracts here:
+[https://github.com/wom-token/WOMDaPP/tree/master/truffle](https://github.com/wom-token/WOMDaPP/tree/master/truffle)
+If you're a techie check out our Solidity contracts here:
+[https://github.com/wom-token/WOMDaPP/tree/master/truffle/contracts](https://github.com/wom-token/WOMDaPP/tree/master/truffle/contracts)
+
+
+# WOM Documents
 You can read the current WOMToken light paper here: [https://uploads-ssl.webflow.com/5a5741a320870d0001d8658d/5b4750a7a0fccf0318d8a02f_WOM-Token-Light-Paper-v5.0%20small.pdf](https://uploads-ssl.webflow.com/5a5741a320870d0001d8658d/5b4750a7a0fccf0318d8a02f_WOM-Token-Light-Paper-v5.0%20small.pdf).
 You can read the current WOMToken business check here:
 [https://uploads-ssl.webflow.com/5a5741a320870d0001d8658d/5b4753fdee75f159f7397336_WOM-Token-Business-Deck-2.6.2%20small.pdf](https://uploads-ssl.webflow.com/5a5741a320870d0001d8658d/5b4753fdee75f159f7397336_WOM-Token-Business-Deck-2.6.2%20small.pdf).
