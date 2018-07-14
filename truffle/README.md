@@ -1,12 +1,5 @@
 # Overview
 
-
-# Architecture
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/wom-token/WOMDaPP/master/images/ArchitectureFirstIteration.png?token=AecS8J-Byu3fxOy2EkqxVufyb9bdI_1Mks5bUssQwA%3D%3D" alt="WOM Architecture"/>
-</p>
-
 # Upgradability
 All contracts are built to be upgradeable by storing long-term data in a simple storage contract, while short-term data and complex logic is handled in their own respective contracts. The contracts can be upgraded at any time without losing access to the valuable long-term data. To upgrade a contract the owners will go through a multi-signature process that requires them to agree on the address of the replacing contract.  
 
@@ -14,7 +7,14 @@ All contracts are built to be upgradeable by storing long-term data in a simple 
 All critical functions that may result in the movement of Ether/WOM or important data changes can be paused/unpaused by the owners of the platform. The platform is currently written to have 3 owners who must have a consensus for any critical functions to be called. Using this consensus agreement removes the risk involved in having one Ethereum wallet gain control over the whole platform.
 
 
-## ContractManager
+# Architecture
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/wom-token/WOMDaPP/master/images/ArchitectureFirstIteration.png?token=AecS8J-Byu3fxOy2EkqxVufyb9bdI_1Mks5bUssQwA%3D%3D" alt="WOM Architecture"/>
+</p>
+
+
+## ContractManager 100% :bulb:
 ContractManager.sol is where all current contracts are registered in the WOM platform. The Database contract will not allow anybody to change the data unless the caller is registered in the ContractManager contract. To add or remove contracts from the platform a multi-sig agreement from the owners is required. As long as ContractManager is able to add new contracts, it will be upgradeable itself.
 
 #### addContract()
@@ -38,7 +38,7 @@ Param _functionSigner: One of 3 owners that was added in Database initialization
 Example: await ContractManager.addContract('InitialVariables', InitialVariables2.address, ownerAddress2,{from:web3.eth.coinbase});  
 
 
-## Database
+## Database 100% :bulb:
 Database.sol holds all long term data for the platform. It stores all data in mappings which can be referenced with a bytes32 key, which is produced from the sha3 hash of variable names with associated ID's and user addresses. This contract is inspired by RocketStorage's spoke and hub model, and it will be the only contract on the platform that is not upgradeable, since it holds all the data on the platform. For this reason it is written very simple and robust, only taking bytes32 keys to store values. The database contract will only accept transactions originating from one of the contracts registered in ContractManager.
 
 #### How to retrieve any data from Database:
@@ -51,11 +51,11 @@ OR
 await Database.boolStorage(await HashFunctions.stringAddress('owner', 0x0....8f7a...));  
 
 
-## HashFunctions
+## HashFunctions 100% :bulb:
 Hashfunctions.sol is used for hashing desired values into bytes32 key, which is then used for retrieving data from the Database.  HashFunctions has not other purpose other than this, and is not used in the operations of the DaPPs core Smart Contracts, only for communication from the front end to the backend via web3.
 
 
-## InitialVariables
+## InitialVariables 90% :bulb:
 InitialVariables.sol is executed once, and only once when the full WOM DaPP has been pushed to the public network.  InitializeVariables communicates and creates a bytes32 key with an associate value to be stored in Database.  For this particular instance, we initialize an associate uint ID to a bytes32 hash of what type of oraclize query.  
 
 #### startDapp()
