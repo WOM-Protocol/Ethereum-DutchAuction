@@ -4,7 +4,7 @@
 *NOTE: The current alpha of WOM requires the latest [ganache-cli@v6.1.6](https://github.com/trufflesuite/ganache-cli), [truffle@v4.1.8](https://github.com/trufflesuite/truffle), and [NodeJS@8.10.0](https://nodejs.org/en/download/package-manager/) or greater to run locally.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/wom-token/WOMDaPP/master/images/womLogo.png?token=AecS8KpHLW--STPwwQhL9OYnfjsuHQH_ks5bTsOHwA%3D%3D" alt="WOMToken logo"/>
+  <img src="https://raw.githubusercontent.com/wom-token/WOMDaPP/master/images/womLogo.png?token=AecS8G5g0ifI4fBjSLua98v4Zh_DXpW5ks5bWBKbwA%3D%3D" alt="WOMToken logo"/>
 </p>
 
 ---
