@@ -1,0 +1,23 @@
+{
+  "name": "circleci",
+  "version": "1.0.0",
+  "description": "",
+  "main": "",
+  "scripts": {
+    "test": "truffle test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wom-token/WOMDaPP.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/wom-token/WOMDaPP/issues"
+  },
+  "dependencies": {
+    "truffle": "^4.1.13",
+    "web3": "^1.0.0-beta.34"
+  },
+  "homepage": "https://github.com/wom-token/WOMDaPP#readme"
+}
