@@ -1,7 +1,7 @@
 const ERC20BurnableAndMintable = artifacts.require('./ERC20BurnableAndMintable.sol');
 const ERC20Interface = artifacts.require('./ERC20Interface.sol');
 
-contract('Deploying and storing all contracts + validation', async (accounts) => {
+contract('ERC20BurnableAndMintable.sol - TestERC20', async (accounts) => {
   const erc20Creator = web3.eth.accounts[0];
   const userAccount = web3.eth.accounts[1];
   const userAccount2 = web3.eth.accounts[2];
@@ -81,7 +81,7 @@ contract('Deploying and storing all contracts + validation', async (accounts) =>
     await erc20Instance.mint(erc20Creator, mintAmount, {from:erc20Creator});
 
     assert.equal(parseInt(await erc20Instance.totalSupply()), initialAmount, 'Total supply updated 1000');
-    assert.equal(parseInt(await erc20Instance.balanceOf(erc20Creator)), initialAmount - 100, 'Balance of creator updated');    
+    assert.equal(parseInt(await erc20Instance.balanceOf(erc20Creator)), initialAmount - 100, 'Balance of creator updated');
   });
 
 
