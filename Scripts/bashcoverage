@@ -1,0 +1,11 @@
+#!/bin/bash
+# Execute from ~/Documents/Projects/WomToken/Code/
+rsync -avP ~/Documents/Projects/WomToken/Code/WOMDaPP/DaPP/ ~/Documents/Projects/WomToken/Code/solcCoverNow/
+cd ~/Documents/Projects/WomToken/Code/solcCoverNow/coverage/
+solidity-coverage
+now-purge     # removes all previous deployments
+layout='New solidity-coverage report: '
+outputNow=$(now --public 2>&1)  # publishes
+slack=$layout$outputNow
+cd ~/Documents/Projects/WomToken/Code/slacktee/slacktee/
+echo $slack | ./slacktee.sh
