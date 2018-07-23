@@ -1,3 +1,5 @@
+const AssertRevert = require('../../helpers/AssertRevert.js');
+
 const ERC20BurnableAndMintable = artifacts.require('./ERC20BurnableAndMintable.sol');
 const ERC20Interface = artifacts.require('./ERC20Interface.sol');
 
@@ -5,6 +7,8 @@ contract('ERC20BurnableAndMintable.sol - TestERC20', async (accounts) => {
   const erc20Creator = web3.eth.accounts[0];
   const userAccount = web3.eth.accounts[1];
   const userAccount2 = web3.eth.accounts[2];
+  const emptyAddress = '0x0000000000000000000000000000000000000000';
+
 
   let erc20Instance;
   let erc20InterfaceInstance;
@@ -32,6 +36,11 @@ contract('ERC20BurnableAndMintable.sol - TestERC20', async (accounts) => {
 
    it('Transfer Tokens', async () => {
      let transferAmount = 100;
+
+     /* ---- require(_to != address(0)); ---- */
+     let promise1 = erc20Instance.transfer(emptyAddress, transferAmount, {from:erc20Creator});
+     AssertRevert.assertRevert(promise1);
+
      await erc20Instance.transfer(userAccount, transferAmount, {from:erc20Creator});
 
      assert.equal(parseInt(await erc20Instance.balanceOf(erc20Creator)), initialAmount - transferAmount, 'Balance of creator reduced by 100');
