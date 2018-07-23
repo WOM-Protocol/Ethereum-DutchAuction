@@ -8,8 +8,8 @@ contract('ERC20BurnableAndMintable.sol - TestERC20', async (accounts) => {
   const erc20Creator = web3.eth.accounts[0];
   const userAccount = web3.eth.accounts[1];
   const userAccount2 = web3.eth.accounts[2];
+  const userAccount3 = web3.eth.accounts[3];
   const emptyAddress = '0x0000000000000000000000000000000000000000';
-
 
   let erc20Instance;
   let erc20InterfaceInstance;
@@ -135,6 +135,12 @@ contract('ERC20BurnableAndMintable.sol - TestERC20', async (accounts) => {
     await erc20Instance.mint(erc20Creator, mintAmount, {from:erc20Creator});
     assert.equal(parseInt(await erc20Instance.totalSupply()), initialAmount, 'Total supply updated 1000');
     assert.equal(parseInt(await erc20Instance.balanceOf(erc20Creator)), initialAmount - 100, 'Balance of creator updated');
+  });
+
+  it('Approve and call', async () => {
+     let approveAmount = 50;
+     let revert1 = erc20Instance.approveAndCall(userAccount3, approveAmount, web3.toHex('test'), {from:erc20Creator});
+     AssertRevert.assertRevert(revert1);
   });
 
   it('Ensure revert fallback', async () => {
