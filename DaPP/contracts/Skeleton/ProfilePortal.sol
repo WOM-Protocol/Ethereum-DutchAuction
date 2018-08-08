@@ -35,10 +35,8 @@ contract ProfilePortal {
     database.setAddress(keccak256(abi.encodePacked('username/address', _userName)), msg.sender);
     database.setBool(keccak256(abi.encodePacked('username/address-assocation', msg.sender, _userName)), true);
     database.setString(keccak256(abi.encodePacked('username/address-associated', msg.sender)), _userName);
-
     database.setUint(keccak256(abi.encodePacked('username/address-position', msg.sender)), 1);
-    database.setAddress(keccak256(abi.encodePacked('username/address-with-position', _userName, 1)), msg.sender);
-
+    database.setAddress(keccak256(abi.encodePacked('username/address-with-position', _userName, uint(1))), msg.sender);
     uint newTotalUsers = database.uintStorage(keccak256(abi.encodePacked('total-users'))).add(1);
     database.setUint(keccak256(abi.encodePacked('total-users')), newTotalUsers);
     emit LogNewUserRegistered(msg.sender, newTotalUsers, keccak256(abi.encodePacked(_userName)));
@@ -79,8 +77,22 @@ contract ProfilePortal {
   }
 
 
-
-
+  function assignAddressTypes(
+    address _stakingAddress,
+    address _revenueAddress,
+    address _interestAddress,
+    string _userName)
+  public
+  returns (bool){
+    require(usernameExists(_userName));
+    require(addressAssociatedWithUsername(_userName));
+    database.setAddress(keccak256(abi.encodePacked('username/address-staking', _userName)), _stakingAddress);
+    database.setAddress(keccak256(abi.encodePacked('username/address-revenue', _userName)), _revenueAddress);
+    database.setAddress(keccak256(abi.encodePacked('username/address-interest', _userName)), _interestAddress);
+    database.setBool(keccak256(abi.encodePacked('username/address-types-set', _userName)), true);
+    emit LogAdressTypesUpdated(msg.sender, now);
+    return true;
+  }
 
   // ---------------- View Functions ------------- //
   function addressAssociatedWithUsername(string _userName)
@@ -138,6 +150,7 @@ contract ProfilePortal {
   event LogPendingAddressAdded(address indexed _userAddress, address indexed _additionalAddress, bytes32 indexed _hashUsername);
   event LogPendingAddressVerified(address indexed _additionalAddress, bytes32 indexed _hashUsername);
   event LogAddressRemoved(address indexed _userAddress, address indexed _additionalAddress, bytes32 indexed _hashUsername);
+  event LogAdressTypesUpdated(address indexed _userAddress, uint indexed _timestamp);
 
   function ()
   public {

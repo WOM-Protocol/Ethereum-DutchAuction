@@ -19,22 +19,4 @@ contract PlatformPortal {
     database = Database(_database);
   }
 
-
-  function assignStakingAddress()
-  public
-  returns (bool){
-    return true;
-  }
-
-  function assignRevenueAddress()
-  public
-  returns (bool){
-    return true;
-  }
-
-  function assignInterestAddress()
-  public
-  returns (bool){
-    return true;
-  }
 }

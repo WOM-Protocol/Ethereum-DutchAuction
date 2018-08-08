@@ -25,27 +25,50 @@ contract Staking {
   }
 
   /*
-    Platform specifies their desired address to withdraw from
+    TODO; Keep track of amount of stake, and the address associated and each time they generate
+    an income the stake amount is taken from the revenue.  Then thereafter, the revenue
+    associated address gets the rest.
+    - Keep track of requested amount.
+    - User address and username that requested stake lend
+    - Amount of requested amount
+
+
+    1 - Platform pays for stake, and if user generates an income the stake is taken out of that
+    2 - Platform pays for stake, takes stake back and % of revenue
+    3 - User pays for stake, and gets revenue
   */
 
-  function requestTokenLend(uint _amount, uint _platformPercentage, uint _duration, string _platformUsername, bytes32 _lendType)
+  function requestTokenLend(string _userName, uint _amount, uint _platformPercentage, uint _duration, string _lenderUsername, uint _lendType)
   whenNotPaused
   nonReentrant
   notEmptyUint(_amount)
   notEmptyUint(_duration)
-  noEmptyBytes(_lendType)
+  notEmptyUint(_lendType)
   public
   returns (bool){
-    require(usernameExists(_platformUsername));
-    string memory usernameAssociated = database.stringStorage(keccak256(abi.encodePacked('username/address-associated', msg.sender)));
-                // User validation //
-    require(notEmptyString(usernameAssociated));
-    usernameExists(usernameAssociated);
-    require(addressAssociatedWithUsername(usernameAssociated));
-    require(levelApproved(uint(1), usernameAssociated));
-                // Platforms validation //
-    require(levelApproved(uint(4), _platformUsername));
-    //address platformAddress = database.addressStorage(keccak256(abi.encodePacked('username/address-with-position', _platformUsername, uint(0))));
+    require(notEmptyString(_userName));
+    require(notEmptyString(_lenderUsername));
+
+    require(usernameExists(_userName));
+    require(usernameExists(_lenderUsername));
+
+    require(levelApproved(uint(1), _userName));
+    require(levelApproved(uint(1), _lenderUsername));
+
+    require(addressAssociatedWithUsername(_userName));
+    require(database.boolStorage(keccak256(abi.encodePacked('username/address-types-set', _userName))));
+
+    address platformStaking = database.addressStorage(keccak256(abi.encodePacked('username/address-staking', _lenderUsername)));
+    require(womToken.balanceOf(platformStaking) >= _amount);
+
+
+
+
+    /*database.setAddress(keccak256(abi.encodePacked('username/address-staking', _userName)), _stakingAddress);
+    database.setAddress(keccak256(abi.encodePacked('username/address-revenue', _userName)), _revenueAddress);
+    database.setAddress(keccak256(abi.encodePacked('username/address-interest', _userName)), _interestAddress);
+    database.setBool(keccak256(abi.encodePacked('username/address-types-set', _userName)), true);
+*/
 
     //database.setUint(keccak256(abi.encodePacked('platform/request-count', msg.sender)), userNameAddressCount);
 
@@ -53,12 +76,7 @@ contract Staking {
     //require(womToken.balanceOf(platformAddress) >= _amount);
 
 
-    /*
-      Keep count of all requests for Stake
-      User address and username that requested stake lend
-      amount of requested amount
 
-    */
 
     return true;
   }
@@ -120,6 +138,7 @@ contract Staking {
     _;
     rentrancy_lock = false;
   }
+
 
 
 /*
