@@ -18,6 +18,7 @@ contract ProfileLevel {
       1 - KYC/creator
       2 - Curator
       3 - Campaign Manager
+      4 - Platform
   */
   function approveUser(address _newUser, uint _profileAccess)
   anyOwner
@@ -26,14 +27,14 @@ contract ProfileLevel {
   noEmptyAddress(_newUser)
   external
   returns (bool) {
-    require(_profileAccess != uint(0) && _profileAccess <= uint(3));
+    require(_profileAccess != uint(0) && _profileAccess <= uint(4));
     string memory usernameAssociated = database.stringStorage(keccak256(abi.encodePacked('username/address-associated', msg.sender)));
     require(notEmptyString(usernameAssociated));
     require(addressAssociatedWithUsername(usernameAssociated));
-    database.setUint(keccak256(abi.encodePacked("profileAccess", usernameAssociated)), _profileAccess);
+    database.setUint(keccak256(abi.encodePacked("username/profileAccess", usernameAssociated)), _profileAccess);
     uint expiry = now + oneYearExpiry;
     assert (expiry > now && expiry > oneYearExpiry);   // Check for overflow
-    database.setUint(keccak256(abi.encodePacked("userAccessExpiration", usernameAssociated)), expiry);
+    database.setUint(keccak256(abi.encodePacked("username/profileAccessExpiration", usernameAssociated)), expiry);
     emit LogUserApproved(_newUser, _profileAccess);
     return true;
   }
@@ -49,11 +50,13 @@ contract ProfileLevel {
     require(notEmptyString(usernameAssociated));
     require(addressAssociatedWithUsername(usernameAssociated));
     uint profileLevel = database.uintStorage(keccak256(abi.encodePacked("profileAccess", usernameAssociated)));
-    database.deleteUint(keccak256(abi.encodePacked("userAccess", usernameAssociated)));
-    database.deleteUint(keccak256(abi.encodePacked("userAccessExpiration", usernameAssociated)));
+    database.deleteUint(keccak256(abi.encodePacked("username/profileAccess", usernameAssociated)));
+    database.deleteUint(keccak256(abi.encodePacked("username/profileAccessExpiration", usernameAssociated)));
     emit LogUserRemoved(_user, profileLevel);
     return true;
   }
+
+
 
 
   // ------------ View Functions ------------ //

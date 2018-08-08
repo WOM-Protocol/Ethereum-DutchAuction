@@ -23,7 +23,86 @@ contract Staking {
     database = Database(_database);
   }
 
+  function requestTokenLend(uint _amount, uint _platformPercentage, uint _duration, string _platformUsername, bytes32 _lendType)
+  whenNotPaused
+  nonReentrant
+  notEmptyUint(_amount)
+  notEmptyUint(_duration)
+  noEmptyBytes(_lendType)
+  public
+  returns (bool){
+    require(usernameExists(_platformUsername));
+    string memory usernameAssociated = database.stringStorage(keccak256(abi.encodePacked('username/address-associated', msg.sender)));
+                // User validation //
+    require(notEmptyString(usernameAssociated));
+    usernameExists(usernameAssociated);
+    require(addressAssociatedWithUsername(usernameAssociated));
+    require(levelApproved(uint(1), usernameAssociated));
+                // Platforms validation //
+    require(levelApproved(uint(4), _platformUsername));
+    // Check platform has that amount of tokens for request
 
+
+    return true;
+  }
+
+  // ------------ View Functions ------------ //
+  function addressAssociatedWithUsername(string _userName)
+  view
+  public
+  returns (bool){
+    return database.boolStorage(keccak256(abi.encodePacked('username/address-assocation', msg.sender, _userName)));
+  }
+
+  function usernameExists(string _userName)
+  whenNotPaused
+  view
+  public
+  returns (bool){
+    notEmptyString(_userName);
+    return database.boolStorage(keccak256(abi.encodePacked('username', _userName)));
+  }
+
+  function levelApproved(uint _profileLevel, string _userName)
+  view
+  public
+  returns (bool){
+    require(database.uintStorage(keccak256(abi.encodePacked("username/profileAccess", _userName))) >= uint(_profileLevel));
+    require(database.uintStorage(keccak256(abi.encodePacked("username/profileAccessExpiration", _userName))) > now);
+    return true;
+  }
+
+  function notEmptyString(string _param)
+  pure
+  public
+  returns (bool){
+    require(bytes(_param).length != 0);
+    return true;
+  }
+
+
+  // ------------ Modifiers ------------ //
+  modifier notEmptyUint(uint _param){
+    require(_param != 0 && _param > 0);
+    _;
+  }
+
+  modifier noEmptyBytes(bytes32 _data) {
+    require(_data != bytes32(0));
+    _;
+  }
+
+  modifier whenNotPaused {
+    require(!database.boolStorage(keccak256(abi.encodePacked("pause", this))));
+    _;
+  }
+
+  modifier nonReentrant() {
+    require(!rentrancy_lock);
+    rentrancy_lock = true;
+    _;
+    rentrancy_lock = false;
+  }
 
 
 /*

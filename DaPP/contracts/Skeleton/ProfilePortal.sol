@@ -10,6 +10,7 @@ contract ProfilePortal {
   /*
     We have multiple addresses attached to one username, meaning that companies
     can allow multiple employees to curate and create campaigns.
+    Platforms have multiple addresses attached as well.
   */
 
 
