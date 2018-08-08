@@ -1,10 +1,15 @@
 pragma solidity ^0.4.24;
 
 import './Database.sol';
+import '../Libraries/SafeMath.sol';
+
 
 contract ProfilePortal {
+  using SafeMath for *;
+
 
   Database public database;
+  bool private rentrancy_lock = false;
 
   constructor(address _database)
   public {
@@ -114,6 +119,9 @@ contract ProfilePortal {
   }
 
   event LogNewUserRegistered(address indexed _userAddress, uint indexed _newTotalUsers, bytes32 indexed _hashUsername);
+  event LogPendingAddressAdded(address indexed _userAddress, address indexed _additionalAddress, bytes32 indexed _hashUsername);
+  event LogPendingAddressVerified(address indexed _additionalAddress, bytes32 indexed _hashUsername);
+  event LogAddressRemoved(address indexed _userAddress, address indexed _additionalAddress, bytes32 indexed _hashUsername);
 
   function ()
   public {
