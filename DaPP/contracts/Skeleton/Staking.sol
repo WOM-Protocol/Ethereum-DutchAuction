@@ -45,12 +45,12 @@ contract Staking {
     require(levelApproved(uint(1), usernameAssociated));
                 // Platforms validation //
     require(levelApproved(uint(4), _platformUsername));
-    address platformAddress = database.addressStorage(keccak256(abi.encodePacked('username/address-with-position', _platformUsername, XYZ)));
+    //address platformAddress = database.addressStorage(keccak256(abi.encodePacked('username/address-with-position', _platformUsername, uint(0))));
 
-    database.setUint(keccak256(abi.encodePacked('platform/request-count', msg.sender)), userNameAddressCount);
+    //database.setUint(keccak256(abi.encodePacked('platform/request-count', msg.sender)), userNameAddressCount);
 
 
-    require(womToken.balanceOf(platformAddress) >= _amount);
+    //require(womToken.balanceOf(platformAddress) >= _amount);
 
 
     /*
