@@ -17,9 +17,9 @@ Contracts are written in `solidity` and built with the Ethereum framework `truff
 
 # WOM DaPP Development
 You can view our current documentation for our Smart Contracts here:
-[https://github.com/wom-token/WOMDaPP/tree/master/truffle](https://github.com/wom-token/WOMDaPP/tree/master/truffle).  
+[https://github.com/wom-token/WOMDaPP/tree/master/truffle](https://github.com/wom-token/WOMDaPP/tree/master/DaPP).  
 If you're a techie check out our Solidity contracts here:
-[https://github.com/wom-token/WOMDaPP/tree/master/truffle/contracts](https://github.com/wom-token/WOMDaPP/tree/master/truffle/contracts).  
+[https://github.com/wom-token/WOMDaPP/tree/master/truffle/contracts](https://github.com/wom-token/WOMDaPP/tree/master/DaPP/contracts).  
 
 
 # WOM Documents
