@@ -10,6 +10,7 @@ contract('Database.sol - TestDatabase', async (accounts) => {
 
   const mimicContract = web3.eth.accounts[3];
   const randomAddress = web3.eth.accounts[4];
+  const valueCreationFundAddress = web3.eth.accounts[8];
   const emptyAddress = '0x0000000000000000000000000000000000000000';
 
   const userName = 'ConnorBlockchain';
@@ -38,7 +39,7 @@ contract('Database.sol - TestDatabase', async (accounts) => {
 
      /* ------------ MimicContract ------------ */
      await contractManagerInstance.addContract('MimicContract', mimicContract, ownerAddr2);
-     await initialVariableInstance.startDapp();
+     await initialVariableInstance.startDapp(valueCreationFundAddress);
      /* ------------ FinalizeDeployment ------------ */
      await contractManagerInstance.setDeployFinished();
    });
