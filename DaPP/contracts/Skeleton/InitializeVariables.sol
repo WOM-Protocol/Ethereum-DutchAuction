@@ -11,9 +11,9 @@ Database public database;
     database = Database(_database);
   }
 
-  function startDapp()
+  function startDapp(address _valueCreationFund)
   external  {
-
+    database.setAddress(keccak256(abi.encodePacked('ValueCreationFund')), _valueCreationFund);
     emit LogInitialized(msg.sender, address(database), block.number);
   }
 
