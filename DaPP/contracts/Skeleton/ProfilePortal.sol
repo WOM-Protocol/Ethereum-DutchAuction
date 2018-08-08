@@ -27,6 +27,68 @@ contract ProfilePortal {
     emit LogNewUserRegistered(msg.sender, newTotalUsers, keccak256(abi.encodePacked(_userName)));
   }
 
+  function addPendingAddress(string _userName, address _additionalAddress)
+  whenNotPaused
+  nonReentrant
+  notEmptyString(_userName)
+  noZeroAddress(_additionalAddress)
+  external
+  returns (bool){
+    require(!addressSet(_additionalAddress));
+    require(addressSet(msg.sender));
+    require(usernameExists(_userName));
+    require(addressAssociatedWithUsername(_userName));
+    database.setAddress(keccak256(abi.encodePacked('username/pending-address', _userName)), _additionalAddress);
+    emit LogPendingAddressAdded(msg.sender, _additionalAddress, keccak256(abi.encodePacked(_userName)));
+  }
+
+  function verifyPendingAddress(string _userName)
+  whenNotPaused
+  nonReentrant
+  notEmptyString(_userName)
+  external
+  returns (bool){
+    require(usernameExists(_userName));
+    require(!addressSet(msg.sender));
+    require(database.addressStorage(keccak256(abi.encodePacked('username/pending-address', _userName))) == msg.sender);
+    uint userNameAddressCount = database.uintStorage(keccak256(abi.encodePacked('username/address-count', _userName))).add(1);
+    database.setBool(keccak256(abi.encodePacked('address-taken', msg.sender)), true);
+    database.setBool(keccak256(abi.encodePacked('username/address-assocation', msg.sender, _userName)), true);
+    database.setUint(keccak256(abi.encodePacked('username/address-position', msg.sender)), userNameAddressCount);
+    database.setAddress(keccak256(abi.encodePacked('username/address-with-position', _userName, userNameAddressCount)), msg.sender);
+    database.setUint(keccak256(abi.encodePacked('username/address-count', _userName)), userNameAddressCount);
+    database.deleteAddress(keccak256(abi.encodePacked('username/pending-address', _userName)));
+    emit LogPendingAddressVerified(msg.sender, keccak256(abi.encodePacked(_userName)));
+  }
+
+  // ---------------- View Functions ------------- //
+  function addressAssociatedWithUsername(string _userName)
+  whenNotPaused
+  notEmptyString(_userName)
+  view
+  public
+  returns (bool){
+    return database.boolStorage(keccak256(abi.encodePacked('username/address-assocation', msg.sender, _userName)));
+  }
+
+
+  function usernameExists(string _userName)
+  whenNotPaused
+  notEmptyString(_userName)
+  view
+  public
+  returns (bool){
+    return database.boolStorage(keccak256(abi.encodePacked('username', _userName)));
+  }
+
+
+  function addressSet(address _param)
+  view
+  public
+  returns (bool){
+    return database.boolStorage(keccak256(abi.encodePacked('address-taken', _param)));
+  }
+
 
   // ------------ Modifiers ------------ //
   modifier whenNotPaused {
