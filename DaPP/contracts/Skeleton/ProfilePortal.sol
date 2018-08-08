@@ -7,6 +7,11 @@ import '../Libraries/SafeMath.sol';
 contract ProfilePortal {
   using SafeMath for *;
 
+  /*
+    We have multiple addresses attached to one username, meaning that companies
+    can allow multiple employees to curate and create campaigns.
+  */
+
 
   Database public database;
   bool private rentrancy_lock = false;
@@ -27,6 +32,7 @@ contract ProfilePortal {
     database.setBool(keccak256(abi.encodePacked('address-taken', msg.sender)), true);
     database.setBool(keccak256(abi.encodePacked('username', _userName)), true);
     database.setBool(keccak256(abi.encodePacked('username/address-assocation', msg.sender, _userName)), true);
+    database.setString(keccak256(abi.encodePacked('username/address-associated', msg.sender)), _userName);
     uint newTotalUsers = database.uintStorage(keccak256(abi.encodePacked('total-users'))).add(1);
     database.setUint(keccak256(abi.encodePacked('total-users')), newTotalUsers);
     emit LogNewUserRegistered(msg.sender, newTotalUsers, keccak256(abi.encodePacked(_userName)));
