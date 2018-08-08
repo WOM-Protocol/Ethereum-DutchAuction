@@ -18,10 +18,15 @@ contract Staking {
   // 2678400 - 1 month
 
 
-  constructor(address _database)
+  constructor(address _database, address _womToken)
   public {
     database = Database(_database);
+    womToken = ERC20BurnableAndMintable(_womToken);
   }
+
+  /*
+    Platform specifies their desired address to withdraw from
+  */
 
   function requestTokenLend(uint _amount, uint _platformPercentage, uint _duration, string _platformUsername, bytes32 _lendType)
   whenNotPaused
@@ -40,8 +45,20 @@ contract Staking {
     require(levelApproved(uint(1), usernameAssociated));
                 // Platforms validation //
     require(levelApproved(uint(4), _platformUsername));
-    // Check platform has that amount of tokens for request
+    address platformAddress = database.addressStorage(keccak256(abi.encodePacked('username/address-with-position', _platformUsername, XYZ)));
 
+    database.setUint(keccak256(abi.encodePacked('platform/request-count', msg.sender)), userNameAddressCount);
+
+
+    require(womToken.balanceOf(platformAddress) >= _amount);
+
+
+    /*
+      Keep count of all requests for Stake
+      User address and username that requested stake lend
+      amount of requested amount
+
+    */
 
     return true;
   }

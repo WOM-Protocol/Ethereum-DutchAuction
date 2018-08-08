@@ -32,8 +32,13 @@ contract ProfilePortal {
     require(!usernameExists(_userName));
     database.setBool(keccak256(abi.encodePacked('address-taken', msg.sender)), true);
     database.setBool(keccak256(abi.encodePacked('username', _userName)), true);
+    database.setAddress(keccak256(abi.encodePacked('username/address', _userName)), msg.sender);
     database.setBool(keccak256(abi.encodePacked('username/address-assocation', msg.sender, _userName)), true);
     database.setString(keccak256(abi.encodePacked('username/address-associated', msg.sender)), _userName);
+
+    database.setUint(keccak256(abi.encodePacked('username/address-position', msg.sender)), 1);
+    database.setAddress(keccak256(abi.encodePacked('username/address-with-position', _userName, 1)), msg.sender);
+
     uint newTotalUsers = database.uintStorage(keccak256(abi.encodePacked('total-users'))).add(1);
     database.setUint(keccak256(abi.encodePacked('total-users')), newTotalUsers);
     emit LogNewUserRegistered(msg.sender, newTotalUsers, keccak256(abi.encodePacked(_userName)));
@@ -72,6 +77,10 @@ contract ProfilePortal {
     database.deleteAddress(keccak256(abi.encodePacked('username/pending-address', _userName)));
     emit LogPendingAddressVerified(msg.sender, keccak256(abi.encodePacked(_userName)));
   }
+
+
+
+
 
   // ---------------- View Functions ------------- //
   function addressAssociatedWithUsername(string _userName)
