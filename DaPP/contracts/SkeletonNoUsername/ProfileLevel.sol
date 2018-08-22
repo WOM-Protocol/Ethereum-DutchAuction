@@ -20,6 +20,7 @@ contract ProfileLevel {
       3 - Campaign Manager
       4 - Platform
   */
+
   function approveUser(address _newUser, uint _profileAccess)
   anyOwner
   nonReentrant
@@ -28,13 +29,10 @@ contract ProfileLevel {
   external
   returns (bool) {
     require(_profileAccess != uint(0) && _profileAccess <= uint(4));
-    string memory usernameAssociated = database.stringStorage(keccak256(abi.encodePacked('username/address-associated', msg.sender)));
-    require(notEmptyString(usernameAssociated));
-    require(addressAssociatedWithUsername(usernameAssociated));
-    database.setUint(keccak256(abi.encodePacked("username/profileAccess", usernameAssociated)), _profileAccess);
+    database.setUint(keccak256(abi.encodePacked("user/profileAccess", _newUser)), _profileAccess);
     uint expiry = now + oneYearExpiry;
     assert (expiry > now && expiry > oneYearExpiry);   // Check for overflow
-    database.setUint(keccak256(abi.encodePacked("username/profileAccessExpiration", usernameAssociated)), expiry);
+    database.setUint(keccak256(abi.encodePacked("user/profileAccessExpiration", _newUser)), expiry);
     emit LogUserApproved(_newUser, _profileAccess);
     return true;
   }
@@ -44,37 +42,14 @@ contract ProfileLevel {
   anyOwner
   nonReentrant
   whenNotPaused
+  noEmptyAddress(_user)
   external
   returns (bool) {
-    string memory usernameAssociated = database.stringStorage(keccak256(abi.encodePacked('username/address-associated', msg.sender)));
-    require(notEmptyString(usernameAssociated));
-    require(addressAssociatedWithUsername(usernameAssociated));
-    uint profileLevel = database.uintStorage(keccak256(abi.encodePacked("profileAccess", usernameAssociated)));
-    database.deleteUint(keccak256(abi.encodePacked("username/profileAccess", usernameAssociated)));
-    database.deleteUint(keccak256(abi.encodePacked("username/profileAccessExpiration", usernameAssociated)));
-    emit LogUserRemoved(_user, profileLevel);
+    database.deleteUint(keccak256(abi.encodePacked("user/profileAccess", _user)));
+    database.deleteUint(keccak256(abi.encodePacked("user/profileAccessExpiration", _user)));
+    emit LogUserRemoved(_user, now);
     return true;
   }
-
-
-
-
-  // ------------ View Functions ------------ //
-  function notEmptyString(string _param)
-  pure
-  public
-  returns (bool){
-    require(bytes(_param).length != 0);
-    return true;
-  }
-
-  function addressAssociatedWithUsername(string _userName)
-  view
-  public
-  returns (bool){
-    return database.boolStorage(keccak256(abi.encodePacked('username/address-assocation', msg.sender, _userName)));
-  }
-
 
   // ------------ Modifiers ------------ //
   modifier noEmptyAddress(address _param) {
@@ -101,5 +76,5 @@ contract ProfileLevel {
 
   // ------------ Events ------------ //
   event LogUserApproved(address indexed _user, uint indexed _profileLevel);
-  event LogUserRemoved(address indexed _user, uint indexed _profileLevel);
+  event LogUserRemoved(address indexed _user, uint indexed _timestamp);
 }
