@@ -37,14 +37,19 @@ contract TokenLending {
     2 - Platform pays for stake, takes stake back and % of revenue
     3 - User pays for stake, and gets revenue
 
-    LendType 1 == Percentage taken from revenue
+    LendType 1 == Percentage taken from revenue, platform gets stake back
   */
 
-  function requestTokenLend(string _userName, uint _amount, uint _loanPercentage, string _lenderUsername, uint _lendType)
+  function requestTokenLend(
+    string _userName,
+    uint _amount,
+    uint _loanPercentage,
+    string _lenderUsername,
+    bytes32 _functionHash)
   whenNotPaused
   nonReentrant
   notEmptyUint(_amount)
-  notEmptyUint(_lendType)
+  noEmptyBytes(_functionHash) // Ensure that this is a stored function hash
   public
   returns (bool){
     require(notEmptyString(_userName));
@@ -59,10 +64,6 @@ contract TokenLending {
     require(addressAssociatedWithUsername(_userName));
     require(database.boolStorage(keccak256(abi.encodePacked('username/address-types-set', _userName))));
 
-    if(_lendType == 1){
-      require(_loanPercentage > 0);
-    }
-
     address platformStaking = database.addressStorage(keccak256(abi.encodePacked('username/address-staking', _lenderUsername)));
     require(womToken.balanceOf(platformStaking) >= _amount);
 
@@ -70,6 +71,7 @@ contract TokenLending {
     uint userRequestedCount = database.uintStorage(keccak256(abi.encodePacked('username/loan-requested-count', _userName)));
     database.setUint(keccak256(abi.encodePacked('username/loan-requested-count', _userName)), userRequestedCount.add(1));
     database.setString(keccak256(abi.encodePacked('username/loan-request-lender', _userName, userRequestedCount)), _lenderUsername);
+    database.setBytes32(keccak256(abi.encodePacked('username/loan-request-function-hash', _userName, userRequestedCount)), _functionHash);
     uint userRequestedAmount = database.uintStorage(keccak256(abi.encodePacked('username/loan-requested-amount', _userName)));
     database.setUint(keccak256(abi.encodePacked('username/loan-requested-amount', _userName)), userRequestedAmount.add(_amount));
 
@@ -77,16 +79,32 @@ contract TokenLending {
     uint lenderRequestCount = database.uintStorage(keccak256(abi.encodePacked('username/lender-requested-count', _lenderUsername)));
     database.setUint(keccak256(abi.encodePacked('username/lender-requested-count', _lenderUsername)), lenderRequestCount.add(1));
     database.setString(keccak256(abi.encodePacked('username/lender-request-reciever', _lenderUsername, lenderRequestCount)), _userName);
+    database.setBytes32(keccak256(abi.encodePacked('username/loan-request-function-hash', _lenderUsername, lenderRequestCount)), _functionHash);
     uint lenderRequestAmount = database.uintStorage(keccak256(abi.encodePacked('username/lender-requested-amount', _lenderUsername)));
     database.setUint(keccak256(abi.encodePacked('username/lender-requested-amount', _lenderUsername)), lenderRequestAmount.add(_amount));
 
     // Lender pays stake and generates %
-    if(_lendType == 1 && _loanPercentage != 0){
+    if(_loanPercentage > 0){
         database.setUint(keccak256(abi.encodePacked('username/loan-requested-percentage', _userName, userRequestedCount)), _loanPercentage);
         database.setUint(keccak256(abi.encodePacked('username/lender-requested-percentage', _lenderUsername, lenderRequestCount)), _loanPercentage);
     }
-    emit LogNewTokenLoanRequest(msg.sender, _amount, _lendType);
+    emit LogNewTokenLoanRequest(msg.sender, _amount);
     return true;
+  }
+
+  function declineTokenLend()
+  payable
+  public
+  returns (bool){
+
+  }
+
+
+  function initiateTokenLend()
+  payable
+  public
+  returns (bool){
+
   }
 
 
@@ -160,5 +178,5 @@ contract TokenLending {
   promise the user to pay them back, and if they do not claim the tokens YEAY owns the tokens.
 
 */
-  event LogNewTokenLoanRequest(address indexed _initiator, uint indexed _amount, uint _lendType);
+  event LogNewTokenLoanRequest(address indexed _initiator, uint indexed _amount);
 }
