@@ -8,15 +8,14 @@ contract PaymentChannel {
 	uint public channelTimeout;
 	mapping (bytes32 => address) signatures;
 
-  constructor(address to, uint timeout) payable {
+  constructor(address to, uint timeout) payable public {
 		channelRecipient = to;
 		channelSender = msg.sender;
 		startDate = now;
 		channelTimeout = timeout;
 	}
 
-	function CloseChannel(bytes32 h, uint8 v, bytes32 r, bytes32 s, uint value)
-  public {
+	function CloseChannel(bytes32 h, uint8 v, bytes32 r, bytes32 s, uint value) public {
 
 		address signer;
 		bytes32 proof;
@@ -25,30 +24,25 @@ contract PaymentChannel {
 		signer = ecrecover(h, v, r, s);
 
 		// signature is invalid, throw
-		if (signer != channelSender && signer != channelRecipient) throw;
+    require(signer == channelSender && signer == channelRecipient);
 
 		proof = keccak256(abi.encodePacked(this, value));
 
 		// signature is valid but doesn't match the data provided
-		if (proof != h) throw;
+    require(proof == h);
 
 		if (signatures[proof] == 0)
 			signatures[proof] = signer;
 		else if (signatures[proof] != signer){
 			// channel completed, both signatures provided
-			if (!channelRecipient.send(value)) throw;
+      require(channelRecipient.send(value));
 			selfdestruct(channelSender);
 		}
 
 	}
 
-	function ChannelTimeout()
-  public {
-		if (startDate + channelTimeout > now)
-			throw;
-
+	function ChannelTimeout() public {
+    require(startDate + channelTimeout < now);
 		selfdestruct(channelSender);
 	}
-
-  // CREDIT : https://raw.githubusercontent.com/mattdf/payment-channel/master/channel.sol
 }
