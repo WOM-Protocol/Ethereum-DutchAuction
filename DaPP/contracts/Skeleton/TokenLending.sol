@@ -1,605 +1,164 @@
+pragma solidity ^0.4.24;
 
-/**
- * Copyright (c) 2017-present, Parsec Labs (parseclabs.org)
- *
- * This source code is licensed under the Mozilla Public License, version 2,
- * found in the LICENSE file in the root directory of this source tree.
- */
+// ---------------- Contracts ------------- //
+import './Database.sol';
+import '../ERC20/ERC20BurnableAndMintable.sol';
 
-pragma solidity ^0.4.19;
-
-import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
-import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "openzeppelin-solidity/contracts/math/Math.sol";
-import "./PriorityQueue.sol";
-import "./TxLib.sol";
-
-contract ParsecBridge {
-  using SafeMath for uint256;
-  using TxLib for TxLib.Outpoint;
-  using TxLib for TxLib.Output;
-  using PriorityQueue for PriorityQueue.Token;
-
-  event Epoch(uint256 epoch);
-  event NewHeight(uint256 blockNumber, bytes32 indexed root);
-  event NewDeposit(uint32 indexed depositId, address indexed depositor, uint256 indexed color, uint256 amount);
-  event ExitStarted(bytes32 indexed txHash, uint256 indexed outIndex, uint256 indexed color, address exitor, uint256 amount);
-  event ValidatorJoin(address indexed signerAddr, uint256 indexed slotId, bytes32 indexed tenderAddr, uint256 eventCounter, uint256 epoch);
-  event ValidatorLogout(address indexed signerAddr, uint256 indexed slotId, bytes32 indexed tenderAddr, uint256 eventCounter, uint256 epoch);
-  event ValidatorLeave(address indexed signerAddr, uint256 indexed slotId, bytes32 indexed tenderAddr, uint256 epoch);
-  event ValidatorUpdate(address indexed signerAddr, uint256 indexed slotId, bytes32 indexed tenderAddr, uint256 eventCounter);
-
-  bytes32 constant genesis = 0x4920616d207665727920616e6772792c20627574206974207761732066756e21; // "I am very angry, but it was fun!" @victor
-  uint256 public epochLength; // length of epoch in periods (32 blocks)
-  uint256 public lastCompleteEpoch; // height at which last epoch was completed
-  uint256 lastEpochBlockHeight;
-  uint256 parentBlockInterval; // how often epochs can be submitted max
-  uint64 lastParentBlock; // last ethereum block when epoch was submitted
-  uint256 maxReward; // max reward per period
-  uint256 public averageGasPrice; // collected gas price for last submitted blocks
-  uint256 exitDuration;
-  bytes32 public tipHash; // hash of first period that has extended chain to some height
-
-  mapping(uint16 => PriorityQueue.Token) public tokens;
-  mapping(address => bool) tokenColors;
-  uint16 public tokenCount = 0;
-
-  struct Slot {
-    uint32 eventCounter;
-    address owner;
-    uint64 stake;
-    address signer;
-    bytes32 tendermint;
-    uint32 activationEpoch;
-    address newOwner;
-    uint64 newStake;
-    address newSigner;
-    bytes32 newTendermint;
-  }
-
-  mapping(uint256 => Slot) public slots;
-
-  struct Period {
-    bytes32 parent; // the id of the parent node
-    uint32 height;  // the height of last block in period
-    uint32 parentIndex; //  the position of this node in the Parent's children list
-    uint8 slot;
-    uint32 timestamp;
-    uint256 sigs;
-    bytes32[] children; // unordered list of children below this node
-  }
-  mapping(bytes32 => Period) public periods;
-
-  struct Deposit {
-    uint64 height;
-    uint16 color;
-    address owner;
-    uint256 amount;
-  }
-  mapping(uint32 => Deposit) public deposits;
-  uint32 depositCount = 0;
-
-  struct Exit {
-    uint64 amount;
-    uint16 color;
-    address owner;
-  }
-  mapping(bytes32 => Exit) public exits;
-
-  struct Challenge {
-    uint64 stake;
-    address signer;
-    uint32 finalizationEpoch;
-  }
-
-  mapping(bytes32 => mapping(uint256 => Challenge)) challenges;
+// ---------------- Libraries ------------- //
+import '../Libraries/SafeMath.sol';
 
 
-  constructor(uint256 _epochLength, uint256 _maxReward, uint256 _parentBlockInterval, uint256 _exitDuration) public {
-    // init genesis preiod
-    Period memory genesisPeriod;
-    genesisPeriod.parent = genesis;
-    genesisPeriod.height = 32;
-    genesisPeriod.timestamp = uint32(block.timestamp);
-    tipHash = genesis;
-    periods[tipHash] = genesisPeriod;
-    // epochLength and at the same time number of validator slots
-    require(_epochLength < 256);
-    require(_epochLength >= 2);
-    epochLength = _epochLength;
-    // full period reward before taxes and adjustments
-    maxReward = _maxReward;
-    // parent block settings
-    parentBlockInterval = _parentBlockInterval;
-    lastParentBlock = uint64(block.number);
-    exitDuration = _exitDuration;
-  }
+contract TokenLending {
+  using SafeMath for *;
 
-  function registerToken(ERC20 _token) public {
-    require(_token != address(0));
-    require(!tokenColors[_token]);
-    uint256[] memory arr = new uint256[](1);
-    tokenColors[_token] = true;
-    tokens[tokenCount++] = PriorityQueue.Token({
-      addr: _token,
-      heapList: arr,
-      currentSize: 0
-    });
-  }
-
-  function getSlot(uint256 _slotId) constant public returns (uint32, address, uint64, address, bytes32, uint32, address, uint64, address, bytes32) {
-    require(_slotId < epochLength);
-    Slot memory slot = slots[_slotId];
-    return (slot.eventCounter, slot.owner, slot.stake, slot.signer, slot.tendermint, slot.activationEpoch, slot.newOwner, slot. newStake, slot.newSigner, slot.newTendermint);
-  }
+  Database public database;
+  bool private rentrancy_lock = false;
+  ERC20BurnableAndMintable public womToken;
+  uint public stakingExpiry = uint(604800);     // One-week
+  // 2678400 - 1 month
 
 
-  // data = [winnerHash, claimCountTotal, operator, operator ...]
-  // operator: 1b claimCountByOperator - 10b 0x - 1b stake - 20b address
-  function dfs(bytes32[] _data, bytes32 _nodeHash) internal constant returns(bytes32[] data) {
-    Period memory node = periods[_nodeHash];
-    // visit this node
-    data = new bytes32[](_data.length);
-    for (uint256 i = 1; i < _data.length; i++) {
-      data[i] = _data[i];
-    }
-    // find the operator that mined this block
-    i = node.slot + 2;
-    // if operator can claim rewards, assign
-    if (uint256(data[i]) == 0) {
-      data[i] = bytes32(1);
-      data[1] = bytes32(uint256(data[1]) + (1 << 128));
-      data[0] = _nodeHash;
-    }
-    // more of tree to walk
-    if (node.children.length > 0) {
-      bytes32[][] memory options = new bytes32[][](data.length);
-      for (i = 0; i < node.children.length; i++) {
-        options[i] = dfs(data, node.children[i]);
-      }
-      for (i = 0; i < node.children.length; i++) {
-        // compare options, return the best
-        if (uint256(options[i][1]) > uint256(data[1])) {
-          data[0] = options[i][0];
-          data[1] = options[i][1];
-        }
-      }
-    }
-    else {
-      data[0] = _nodeHash;
-      data[1] = bytes32(uint256(data[1]) + 1);
-    }
-    // else - reached a tip
-    // return data
-  }
-
-  function getTip() public constant returns (bytes32, uint256) {
-    // find consensus horizon
-    bytes32 consensusHorizon = periods[tipHash].parent;
-    uint256 depth = (periods[tipHash].height < epochLength * 32) ? 1 : periods[tipHash].height - (epochLength * 32);
-    depth += 32;
-    while(periods[consensusHorizon].height > depth) {
-      consensusHorizon = periods[consensusHorizon].parent;
-    }
-    // create data structure for depth first search
-    bytes32[] memory data = new bytes32[](epochLength + 2);
-    // run search
-    bytes32[] memory rsp = dfs(data, consensusHorizon);
-    // return result
-    return (rsp[0], uint256(rsp[1]) >> 128);
-  }
-
-  function bet(uint256 _slotId, uint256 _value, address _signerAddr, bytes32 _tenderAddr, address _owner) public {
-    require(_slotId < epochLength);
-    Slot storage slot = slots[_slotId];
-    // take care of logout
-    if (_value == 0 && slot.newStake == 0 && slot.signer == _signerAddr) {
-      slot.activationEpoch = uint32(lastCompleteEpoch.add(3));
-      slot.eventCounter++;
-      emit ValidatorLogout(slot.signer, _slotId, _tenderAddr, slot.eventCounter, lastCompleteEpoch + 3);
-      return;
-    }
-    // check min stake
-    uint required = slot.stake;
-    if (slot.newStake > required) {
-      required = slot.newStake;
-    }
-    required = required.mul(105).div(100);
-    require(required < _value);
-
-    // new purchase or update
-    if (slot.stake == 0 || (slot.owner == _owner && slot.newStake == 0)) {
-      uint64 stake = slot.stake;
-      tokens[0].addr.transferFrom(_owner, this, _value - slot.stake);
-      slot.owner = _owner;
-      slot.signer = _signerAddr;
-      slot.tendermint = _tenderAddr;
-      slot.stake = uint64(_value);
-      slot.activationEpoch = 0;
-      slot.eventCounter++;
-      if (stake == 0) {
-        emit ValidatorJoin(slot.signer, _slotId, _tenderAddr, slot.eventCounter, lastCompleteEpoch + 1);
-      } else {
-        emit ValidatorUpdate(slot.signer, _slotId, _tenderAddr, slot.eventCounter);
-      }
-    }
-    // auction
-    else {
-      if (slot.newStake > 0) {
-        tokens[0].addr.transfer(slot.newOwner, slot.newStake);
-      }
-      tokens[0].addr.transferFrom(_owner, this, _value);
-      slot.newOwner = _owner;
-      slot.newSigner = _signerAddr;
-      slot.newTendermint = _tenderAddr;
-      slot.newStake = uint64(_value);
-      slot.activationEpoch = uint32(lastCompleteEpoch.add(3));
-      slot.eventCounter++;
-      emit ValidatorLogout(slot.signer, _slotId, _tenderAddr, slot.eventCounter, lastCompleteEpoch + 3);
-    }
-  }
-
-  function activate(uint256 _slotId) public {
-    require(_slotId < epochLength);
-    Slot storage slot = slots[_slotId];
-    require(lastCompleteEpoch + 1 >= slot.activationEpoch);
-    if (slot.stake > 0) {
-      tokens[0].addr.transfer(slot.owner, slot.stake);
-      emit ValidatorLeave(slot.signer, _slotId, slot.tendermint, lastCompleteEpoch + 1);
-    }
-    slot.owner = slot.newOwner;
-    slot.signer = slot.newSigner;
-    slot.tendermint = slot.newTendermint;
-    slot.stake = slot.newStake;
-    slot.activationEpoch = 0;
-    slot.newOwner = 0;
-    slot.newSigner = 0;
-    slot.newTendermint = 0x0;
-    slot.newStake = 0;
-    slot.eventCounter++;
-    emit ValidatorJoin(slot.signer, _slotId, slot.tendermint, slot.eventCounter, lastCompleteEpoch + 1);
-  }
-
-  function recordGas() internal {
-    averageGasPrice = averageGasPrice - (averageGasPrice / 15) + (tx.gasprice / 15);
-  }
-
-  function countSigs(uint256 _sigs, uint256 _epochLength) internal pure returns (uint256 count) {
-    for (uint i = 256; i >= 256 - _epochLength; i--) {
-        count += uint8(_sigs >> i) & 0x01;
-    }
-  }
-
-  function submitPeriod(uint256 _slotId, bytes32 _prevHash, bytes32 _root, uint256 _sigs) public {
-    // check parent node exists
-    require(periods[_prevHash].parent > 0);
-    // check that same root not submitted yet
-    require(periods[_root].height == 0);
-    // check slot
-    require(_slotId < epochLength);
-    // count sigs
-    require(countSigs(_sigs, epochLength) > epochLength.mul(2).div(3));
-    Slot storage slot = slots[_slotId];
-    require(slot.signer == msg.sender);
-    if (slot.activationEpoch > 0) {
-      // if slot not active, prevent submission
-      require(lastCompleteEpoch.add(2) < slot.activationEpoch);
-    }
-
-    // calculate height
-    uint256 newHeight = periods[_prevHash].height + 32;
-    // do some magic if chain extended
-    if (newHeight > periods[tipHash].height) {
-      // new periods can only be submitted every x Ethereum blocks
-      require(block.number >= lastParentBlock + parentBlockInterval);
-      tipHash = _root;
-      lastParentBlock = uint64(block.number);
-	    // record gas
-	    recordGas();
-      emit NewHeight(newHeight, _root);
-    }
-    // store the period
-    Period memory newPeriod;
-    newPeriod.parent = _prevHash;
-    newPeriod.sigs = _sigs;
-    newPeriod.height = uint32(newHeight);
-    newPeriod.slot = uint8(_slotId);
-    newPeriod.timestamp = uint32(block.timestamp);
-    newPeriod.parentIndex = uint32(periods[_prevHash].children.push(_root) - 1);
-    periods[_root] = newPeriod;
-
-    // distribute rewards
-    uint256 totalSupply = tokens[0].addr.totalSupply();
-    uint256 stakedSupply = tokens[0].addr.balanceOf(this);
-    uint256 reward = maxReward;
-    if (stakedSupply >= totalSupply.div(2)) {
-      // 4 x br x as x (ts - as)
-      // -----------------------
-      //        ts x ts
-      reward = totalSupply.sub(stakedSupply).mul(stakedSupply).mul(maxReward).mul(4).div(totalSupply.mul(totalSupply));
-    }
-    slot.stake += uint64(reward);
-
-    // check if epoch completed
-    if (newHeight >= lastEpochBlockHeight.add(epochLength.mul(32))) {
-      lastCompleteEpoch++;
-      lastEpochBlockHeight = newHeight;
-    }
-  }
-
-  function getChallenge(bytes32 _period, uint256 _slotId) public constant returns (uint256, address, uint256) {
-    return (challenges[_period][_slotId].stake, challenges[_period][_slotId].signer, challenges[_period][_slotId].finalizationEpoch);
-
-  }
-
-  function challengeSig(bytes32 _period, uint256 _slotId) public {
-    require(_slotId < epochLength);
-    // check that sig was actually 1
-    require(uint8(periods[_period].sigs >> _slotId) & 0x01 == 1);
-    // check that challenge doesn't exist yet
-    require(challenges[_period][_slotId].signer == 0x0);
-    // check that challenge submitted for previous epoche, and current epoch has not progressed more than 1/3
-    uint256 finalizationEpoch;
-    if (periods[_period].height <= lastEpochBlockHeight) {
-      // check that challenge not older than 4/3 epoch
-      require(periods[tipHash].height - periods[_period].height < epochLength.mul(32).mul(4).div(3));
-      // check that current epoch not older than 1/3 epochLength
-      require(periods[tipHash].height - lastEpochBlockHeight < epochLength.mul(32).div(3));
-      finalizationEpoch = lastCompleteEpoch;
-    } else {
-      // challenge submitted for current epoch, nothing to check
-      finalizationEpoch = lastCompleteEpoch + 1;
-    }
-    // transfer funds for bond
-    tokens[0].addr.transferFrom(msg.sender, this, 100);
-    // create challenge object
-    challenges[_period][_slotId] = Challenge(100, msg.sender, uint32(finalizationEpoch));
-  }
-
-  function answerSig(bytes32 _period, uint256 _slotId, uint8 _v, bytes32 _r, bytes32 _s) public {
-    // check that challenge does exist
-    require(challenges[_period][_slotId].stake > 0);
-    // check signature
-    require(ecrecover(_period, _v, _r, _s) == slots[_slotId].signer);
-    // slash challenger
-    slots[_slotId].stake += challenges[_period][_slotId].stake / 2;
-    // delete challenge
-    delete challenges[_period][_slotId];
-  }
-
-  function slashSig(bytes32 _period, uint256 _slotId) public {
-    Challenge memory challenge = challenges[_period][_slotId];
-    // check that challenge does exist
-    require(challenge.stake > 0);
-    // check that we are in next epoch
-    require(periods[_period].height <= lastEpochBlockHeight);
-    // check that 2/3 of next epoch passed
-    require(periods[tipHash].height - lastEpochBlockHeight >= epochLength.mul(32).mul(2).div(3));
-    // check that challenge not older than 2 epochs
-    require(periods[tipHash].height - periods[_period].height < epochLength.mul(32).mul(2));
-    // slash validator
-    slash(periods[_period].slot, challenge.stake);
-    // pay out challenger
-    tokens[0].addr.transfer(challenge.signer, challenge.stake / 2);
-    // TODO burn rest of tokens in total supply
-    // delete challenge
-    delete challenges[_period][_slotId];
-  }
-
-  function slashDoubleSig(uint256 _slotId, bytes32 _root1, uint8 _v1, bytes32 _r1, bytes32 _s1, bytes32 _root2, uint8 _v2, bytes32 _r2, bytes32 _s2) public {
-    // check roots are different
-    require(_root1 != _root2);
-    // check _roots exist and have same height
-    require(periods[_root1].height == periods[_root2].height);
-    // check that signer has slot
-    address signer = ecrecover(_root1, _v1, _r1, _s1);
-    require(slots[_slotId].signer == signer);
-    // check that second signature also mathches signer
-    require(ecrecover(_root2, _v2, _r2, _s2) == signer);
-    // slash signer
-    slash(_slotId, 100);
-  }
-
-  function slash(uint256 _slotId, uint256 _value) public {
-    require(_slotId < epochLength);
-    Slot storage slot = slots[_slotId];
-    require(slot.stake > 0);
-    uint256 prevStake = slot.stake;
-    slot.stake = (_value >= slot.stake) ? 0 : slot.stake - uint64(_value);
-    // if slot became empty by slashing
-    if (prevStake > 0 && slot.stake == 0) {
-      //emit ValidatorLeave(slot.signer, _slotId, slot.tendermint, lastCompleteEpoch + 1);
-      slot.activationEpoch = 0;
-        // activate next guy
-    }
-  }
-
-  function deletePeriod(bytes32 hash) internal {
-    Period storage parent = periods[periods[hash].parent];
-    uint256 i = periods[hash].parentIndex;
-    if (i < parent.children.length - 1) {
-      // swap with last child
-      parent.children[i] = parent.children[parent.children.length - 1];
-    }
-    parent.children.length--;
-    if (hash == tipHash) {
-      tipHash = periods[hash].parent;
-    }
-    delete periods[hash];
-  }
-
-  function readInvalidDepositProof(
-    bytes32[] _txData
-  ) public pure returns (
-    uint32 depositId,
-    uint64 value,
-    address signer
-  ) {
-    depositId = uint32(_txData[2] >> 240);
-    value = uint64(_txData[2] >> 176);
-    signer = address(_txData[2]);
+  constructor(address _database, address _womToken)
+  public {
+    database = Database(_database);
+    womToken = ERC20BurnableAndMintable(_womToken);
   }
 
   /*
-   * _txData = [ 32b periodHash, (1b Proofoffset, 8b pos,  ..00.., 1b txData), 32b txData, 32b proof, 32b proof ]
-   *
-   * # 2 Deposit TX (33b)
-   *   1b type
-   *     4b depositId
-   *     8b value, 2b color, 20b address
-   *
-   */
-  function reportInvalidDeposit(bytes32[] _txData) public {
-    Period memory p = periods[_txData[0]];
-    if (periods[tipHash].height > epochLength) {
-      require(p.height > periods[tipHash].height - epochLength);
-    }
-    // check transaction proof
-    TxLib.validateProof(0, _txData);
+    TODO; Keep track of amount of stake, and the address associated and each time they generate
+    an income the stake amount is taken from the revenue.  Then thereafter, the revenue
+    associated address gets the rest.
+    - Keep track of requested amount.
+    - User address and username that requested stake lend
+    - Amount of requested amount
 
-    // check deposit values
-    uint32 depositId;
-    uint64 value;
-    address signer;
-    (depositId, value, signer) = readInvalidDepositProof(_txData);
 
-    Deposit memory dep = deposits[depositId];
-    require(value != dep.amount || signer != dep.owner);
+    1 - Platform pays for stake, and if user generates an income the stake is taken out of that
+    2 - Platform pays for stake, takes stake back and % of revenue
+    3 - User pays for stake, and gets revenue
 
-    // delete invalid period
-    deletePeriod(_txData[0]);
-    // EVENT
-    // slash operator
-    slash(p.slot, 10 * maxReward);
-    // reward 1 block reward
-    tokens[0].addr.transfer(msg.sender, maxReward);
-  }
+    LendType 1 == Percentage taken from revenue
+  */
 
-  function reportDoubleSpend(bytes32[] _proof, bytes32[] _prevProof) public {
-    Period memory p = periods[_proof[0]];
+  function requestTokenLend(string _userName, uint _amount, uint _loanPercentage, string _lenderUsername, uint _lendType)
+  whenNotPaused
+  nonReentrant
+  notEmptyUint(_amount)
+  notEmptyUint(_lendType)
+  public
+  returns (bool){
+    require(notEmptyString(_userName));
+    require(notEmptyString(_lenderUsername));
 
-    // validate proofs
-    uint256 offset = 32 * (_proof.length + 2);
-    uint64 txPos1;
-    (txPos1, , ) = TxLib.validateProof(offset, _prevProof);
+    require(usernameExists(_userName));
+    require(usernameExists(_lenderUsername));
 
-    uint64 txPos2;
-    (txPos2, , ) = TxLib.validateProof(32, _proof);
+    require(levelApproved(uint(1), _userName));
+    require(levelApproved(uint(1), _lenderUsername));
 
-    // make sure transactions are different
-    require(_proof[0] != _prevProof[0] || txPos1 != txPos2);
+    require(addressAssociatedWithUsername(_userName));
+    require(database.boolStorage(keccak256(abi.encodePacked('username/address-types-set', _userName))));
 
-    // get iputs and validate
-    bytes32 prevHash1;
-    bytes32 prevHash2;
-    uint8 outPos1;
-    uint8 outPos2;
-    assembly {
-      //TODO: allow other than first inputId
-      prevHash1 := calldataload(add(134, 32))
-      outPos1 := calldataload(add(166, 32))
-      prevHash2 := calldataload(add(134, offset))
-      outPos2 := calldataload(add(166, offset))
+    if(_lendType == 1){
+      require(_loanPercentage > 0);
     }
 
-    // check that spending same outputs
-    require(prevHash1 == prevHash2 && outPos1 == outPos2);
-    // delete invalid period
-    deletePeriod(_proof[0]);
-    // EVENT
-    // slash operator
-    slash(p.slot, 50);
-  }
+    address platformStaking = database.addressStorage(keccak256(abi.encodePacked('username/address-staking', _lenderUsername)));
+    require(womToken.balanceOf(platformStaking) >= _amount);
 
-  /*
-   * Add funds
-   */
-  function deposit(address _owner, uint256 _amount, uint16 _color) public {
-    require(_color < tokenCount);
-    tokens[_color].addr.transferFrom(_owner, this, _amount);
-    depositCount++;
-    deposits[depositCount] = Deposit({
-      height: periods[tipHash].height,
-      owner: _owner,
-      color: _color,
-      amount: _amount
-    });
-    emit NewDeposit(depositCount, _owner, _color, _amount);
-  }
+    // Track user request info
+    uint userRequestedCount = database.uintStorage(keccak256(abi.encodePacked('username/loan-requested-count', _userName)));
+    database.setUint(keccak256(abi.encodePacked('username/loan-requested-count', _userName)), userRequestedCount.add(1));
+    database.setString(keccak256(abi.encodePacked('username/loan-request-lender', _userName, userRequestedCount)), _lenderUsername);
+    uint userRequestedAmount = database.uintStorage(keccak256(abi.encodePacked('username/loan-requested-amount', _userName)));
+    database.setUint(keccak256(abi.encodePacked('username/loan-requested-amount', _userName)), userRequestedAmount.add(_amount));
 
-  function startExit(bytes32[] _proof, uint256 _oindex) public {
-    // validate proof
-    bytes32 txHash;
-    bytes memory txData;
-    (, txHash, txData) = TxLib.validateProof(32, _proof);
-    // parse tx and use data
-    TxLib.Output memory out = TxLib.parseTx(txData).outs[_oindex];
-    uint256 exitable_at = Math.max256(periods[_proof[0]].timestamp + (2 * exitDuration), block.timestamp + exitDuration);
-    bytes32 utxoId = bytes32((_oindex << 120) | uint120(txHash));
-    uint256 priority = (exitable_at << 128) | uint128(utxoId);
-    require(out.value > 0);
-    require(exits[utxoId].amount == 0);
-    tokens[out.color].insert(priority);
-    exits[utxoId] = Exit({
-      owner: out.owner,
-      color: out.color,
-      amount: out.value
-    });
-    emit ExitStarted(txHash, _oindex, out.color, out.owner, out.value);
-  }
+    // Track lender request info
+    uint lenderRequestCount = database.uintStorage(keccak256(abi.encodePacked('username/lender-requested-count', _lenderUsername)));
+    database.setUint(keccak256(abi.encodePacked('username/lender-requested-count', _lenderUsername)), lenderRequestCount.add(1));
+    database.setString(keccak256(abi.encodePacked('username/lender-request-reciever', _lenderUsername, lenderRequestCount)), _userName);
+    uint lenderRequestAmount = database.uintStorage(keccak256(abi.encodePacked('username/lender-requested-amount', _lenderUsername)));
+    database.setUint(keccak256(abi.encodePacked('username/lender-requested-amount', _lenderUsername)), lenderRequestAmount.add(_amount));
 
-  function challengeExit(bytes32[] _proof, bytes32[] _prevProof, uint256 _oIndex, uint256 _inputIndex) public {
-    // validate exiting tx
-    uint256 offset = 32 * (_proof.length + 2);
-    bytes32 txHash1;
-    ( , txHash1, ) = TxLib.validateProof(offset + 64, _prevProof);
-    bytes32 utxoId = bytes32((_oIndex << 120) | uint120(txHash1));
-
-    require(exits[utxoId].amount > 0);
-
-    // validate spending tx
-    bytes memory txData;
-    (, , txData) = TxLib.validateProof(96, _proof);
-    TxLib.Outpoint memory outpoint = TxLib.parseTx(txData).ins[_inputIndex].outpoint;
-
-    // make sure one is spending the other one
-    require(txHash1 == outpoint.hash);
-    require(_oIndex == outpoint.pos);
-
-    // delete invalid exit
-    delete exits[utxoId].owner;
-    delete exits[utxoId].amount;
-  }
-
-  // @dev Loops through the priority queue of exits, settling the ones whose challenge
-  // @dev challenge period has ended
-  function finalizeExits(uint16 _color) public {
-    bytes32 utxoId;
-    uint256 exitable_at;
-    (utxoId, exitable_at) = getNextExit(_color);
-
-    Exit memory currentExit = exits[utxoId];
-    while (exitable_at <= block.timestamp && tokens[currentExit.color].currentSize > 0) {
-      currentExit = exits[utxoId];
-      if (currentExit.owner != 0 || currentExit.amount != 0) { // exit was removed
-        tokens[currentExit.color].addr.transfer(currentExit.owner, currentExit.amount);
-      }
-      tokens[currentExit.color].delMin();
-      delete exits[utxoId].owner;
-      delete exits[utxoId].amount;
-
-      if (tokens[currentExit.color].currentSize > 0) {
-        (utxoId, exitable_at) = getNextExit(_color);
-      } else {
-        return;
-      }
+    // Lender pays stake and generates %
+    if(_lendType == 1 && _loanPercentage != 0){
+        database.setUint(keccak256(abi.encodePacked('username/loan-requested-percentage', _userName, userRequestedCount)), _loanPercentage);
+        database.setUint(keccak256(abi.encodePacked('username/lender-requested-percentage', _lenderUsername, lenderRequestCount)), _loanPercentage);
     }
+    emit LogNewTokenLoanRequest(msg.sender, _amount, _lendType);
+    return true;
   }
 
-  function getNextExit(uint16 _color) internal view returns (bytes32 utxoId, uint256 exitable_at) {
-    uint256 priority = tokens[_color].getMin();
-    utxoId = bytes32(uint128(priority));
-    exitable_at = priority >> 128;
+
+
+  // ------------ View Functions ------------ //
+  function addressAssociatedWithUsername(string _userName)
+  view
+  public
+  returns (bool){
+    return database.boolStorage(keccak256(abi.encodePacked('username/address-assocation', msg.sender, _userName)));
   }
 
+  function usernameExists(string _userName)
+  whenNotPaused
+  view
+  public
+  returns (bool){
+    notEmptyString(_userName);
+    return database.boolStorage(keccak256(abi.encodePacked('username', _userName)));
+  }
+
+  function levelApproved(uint _profileLevel, string _userName)
+  view
+  public
+  returns (bool){
+    require(database.uintStorage(keccak256(abi.encodePacked("username/profileAccess", _userName))) >= uint(_profileLevel));
+    require(database.uintStorage(keccak256(abi.encodePacked("username/profileAccessExpiration", _userName))) > now);
+    return true;
+  }
+
+  function notEmptyString(string _param)
+  pure
+  public
+  returns (bool){
+    require(bytes(_param).length != 0);
+    return true;
+  }
+
+
+  // ------------ Modifiers ------------ //
+  modifier notEmptyUint(uint _param){
+    require(_param != 0 && _param > 0);
+    _;
+  }
+
+  modifier noEmptyBytes(bytes32 _data) {
+    require(_data != bytes32(0));
+    _;
+  }
+
+  modifier whenNotPaused {
+    require(!database.boolStorage(keccak256(abi.encodePacked("pause", this))));
+    _;
+  }
+
+  modifier nonReentrant() {
+    require(!rentrancy_lock);
+    rentrancy_lock = true;
+    _;
+    rentrancy_lock = false;
+  }
+
+
+
+/*
+1: Just Staker alone generates the revenue
+	2: Staker can pay for some other creator and creator generates revenue
+	3: Staker can pay for another creator, and pass in an interest rate
+  Lending tokens, 30 > 60 days implementation.
+  YEAY owns content right when publishing it to WOMToken, and they
+  promise the user to pay them back, and if they do not claim the tokens YEAY owns the tokens.
+
+*/
+  event LogNewTokenLoanRequest(address indexed _initiator, uint indexed _amount, uint _lendType);
 }
