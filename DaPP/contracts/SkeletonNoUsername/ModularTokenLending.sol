@@ -95,6 +95,7 @@ contract TokenLending {
 
     database.deleteBool(keccak256(abi.encodePacked('lending/active-request', _userAddress, _userRequestedCount)));
     database.deleteBool(keccak256(abi.encodePacked('lending/active-request', _lenderAddress, _lenderRequestedCount)));
+    emit LogRequestRemoved(_userAddress, _lenderAddress, now);
     return true;
   }
 
@@ -110,16 +111,16 @@ contract TokenLending {
 
       require(database.boolStorage(keccak256(abi.encodePacked('lending/active-request', msg.sender, _lenderRequestedCount))));
       require(database.boolStorage(keccak256(abi.encodePacked('lending/lender', msg.sender, _lenderRequestedCount))));
+      uint requestedAmount = database.uintStorage(keccak256(abi.encodePacked('lending/amount', msg.sender, _lenderRequestedCount)));
 
-      require(womToken.balanceOf(msg.sender) > database.uintStorage(keccak256(abi.encodePacked('lending/amount', msg.sender, _lenderRequestedCount))));
+      require(womToken.balanceOf(msg.sender) > requestedAmount);
       address userRequestedAddress = database.addressStorage(keccak256(abi.encodePacked('lending/address-association', msg.sender, _lenderRequestedCount)));
       uint userRequestedCount = database.uintStorage(keccak256(abi.encodePacked('lending/address-association-count', msg.sender, _lenderRequestedCount)));
 
       require(database.addressStorage(keccak256(abi.encodePacked('address-association', userRequestedAddress, userRequestedCount))) == msg.sender);
 
       /*  Transfer funds for specific function */
-
-
+      emit LogRequestAccepted(userRequestedAddress, msg.sender, requestedAmount);
       return true;
     }
 
@@ -146,7 +147,6 @@ contract TokenLending {
     database.setUint(keccak256(abi.encodePacked('lending/count', _address1)), _addressCount1);
     uint userRequestedAmount = database.uintStorage(keccak256(abi.encodePacked('lending/total-amount', _address1)));
     database.setUint(keccak256(abi.encodePacked('lending/total-amount', _address1)), userRequestedAmount.add(_amount));
-
     return true;
   }
 
@@ -214,16 +214,7 @@ contract TokenLending {
     rentrancy_lock = false;
   }
 
-
-
-/*
-1: Just Staker alone generates the revenue
-	2: Staker can pay for some other creator and creator generates revenue
-	3: Staker can pay for another creator, and pass in an interest rate
-  Lending tokens, 30 > 60 days implementation.
-  YEAY owns content right when publishing it to WOMToken, and they
-  promise the user to pay them back, and if they do not claim the tokens YEAY owns the tokens.
-
-*/
   event LogNewTokenLoanRequest(address indexed _initiator, uint indexed _amount);
+  event LogRequestRemoved(address indexed _userAddress, address indexed _lenderAddress, uint indexed now);
+  event LogRequestAccepted(address indexed _userAddress, address indexed _lenderAddress, uint indexed _requestedAmount);
 }

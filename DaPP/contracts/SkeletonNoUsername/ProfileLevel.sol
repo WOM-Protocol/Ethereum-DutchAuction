@@ -29,10 +29,10 @@ contract ProfileLevel {
   external
   returns (bool) {
     require(_profileAccess != uint(0) && _profileAccess <= uint(4));
-    database.setUint(keccak256(abi.encodePacked("user/profileAccess", _newUser)), _profileAccess);
+    database.setUint(keccak256(abi.encodePacked('user/profileAccess', _newUser)), _profileAccess);
     uint expiry = now + oneYearExpiry;
     assert (expiry > now && expiry > oneYearExpiry);   // Check for overflow
-    database.setUint(keccak256(abi.encodePacked("user/profileAccessExpiration", _newUser)), expiry);
+    database.setUint(keccak256(abi.encodePacked('user/profileAccessExpiration', _newUser)), expiry);
     emit LogUserApproved(_newUser, _profileAccess);
     return true;
   }
@@ -45,8 +45,8 @@ contract ProfileLevel {
   noEmptyAddress(_user)
   external
   returns (bool) {
-    database.deleteUint(keccak256(abi.encodePacked("user/profileAccess", _user)));
-    database.deleteUint(keccak256(abi.encodePacked("user/profileAccessExpiration", _user)));
+    database.deleteUint(keccak256(abi.encodePacked('user/profileAccess', _user)));
+    database.deleteUint(keccak256(abi.encodePacked('user/profileAccessExpiration', _user)));
     emit LogUserRemoved(_user, now);
     return true;
   }
@@ -58,12 +58,12 @@ contract ProfileLevel {
   }
 
   modifier anyOwner {
-    require(database.boolStorage(keccak256(abi.encodePacked("owner", msg.sender))));
+    require(database.boolStorage(keccak256(abi.encodePacked('owner', msg.sender))));
     _;
   }
 
   modifier whenNotPaused {
-    require(!database.boolStorage(keccak256(abi.encodePacked("pause", this))));
+    require(!database.boolStorage(keccak256(abi.encodePacked('pause', this))));
     _;
   }
 
