@@ -34,7 +34,8 @@ contract TokenExchange{
 
   function convertYeayPointsToWOM(
     address _to,
-    uint _amount
+    uint _amount,
+    bytes _ipfsHash
     )
   nonReentrant
   whenNotPaused
@@ -48,9 +49,12 @@ contract TokenExchange{
     require(womToken.balanceOf(msg.sender) >= _amount);
     require(womToken.transfer(_to, _amount));
 
-    uint totalConverted = database.uintStorage(keccak256(abi.encodePacked('platform/yeay-conversions')));
+    uint totalConversionAmount = database.uintStorage(keccak256(abi.encodePacked('platform/yeay-conversion-amount')));
+    uint totalConversions = database.uintStorage(keccak256(abi.encodePacked('platform/yeay-total-conversions')));
 
-    database.setUint(keccak256(abi.encodePacked('platform/yeay-conversions')), totalConverted.add(_amount));
+    database.setBytes(keccak256(abi.encodePacked('platform/yeay-conversion-hash', totalConversions)), _ipfsHash);
+    database.setUint(keccak256(abi.encodePacked('platform/yeay-total-conversions')), totalConversions.add(1));
+    database.setUint(keccak256(abi.encodePacked('platform/yeay-conversion-amount')), totalConversionAmount.add(_amount));
     emit LogYeayPointConversionToWom(msg.sender, _to, _amount);
     return true;
   }
