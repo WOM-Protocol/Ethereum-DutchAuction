@@ -7,13 +7,6 @@ import '../Libraries/SafeMath.sol';
 contract ProfilePortal {
   using SafeMath for *;
 
-  /*
-    We have multiple addresses attached to one username, meaning that companies
-    can allow multiple employees to curate and create campaigns.
-    Platforms have multiple addresses attached as well.
-  */
-
-
   Database public database;
   bool private rentrancy_lock = false;
 

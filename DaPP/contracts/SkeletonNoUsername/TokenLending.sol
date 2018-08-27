@@ -41,155 +41,163 @@ contract TokenLending {
   */
 
   function requestTokenLend(
-    string _userName,
     uint _amount,
     uint _loanPercentage,
-    string _lenderUsername,
-    bytes32 _functionHash)
+    address _lenderAddress,
+    bytes32 _functionHash
+    )
+    whenNotPaused
+    nonReentrant
+    notEmptyUint(_amount)
+    noEmptyAddress(_lenderAddress)
+    addressSet(msg.sender)
+    addressSet(_lenderAddress)
+    noEmptyBytes(_functionHash)
+    public
+    returns (bool){
+      require(levelApproved(uint(1), msg.sender));
+      require(levelApproved(uint(1), _lenderAddress));
+
+      require(womToken.balanceOf(_lenderAddress) >= _amount);
+
+      /* Track user request info */
+      uint userRequestedCount = database.uintStorage(keccak256(abi.encodePacked('user/loan-request-count', msg.sender))).add(1);
+      uint lenderRequestedCount = database.uintStorage(keccak256(abi.encodePacked('user/lender-requested-count', _lenderAddress))).add(1);
+
+      require(updateUserLend(_amount, _lenderAddress, userRequestedCount, lenderRequestedCount, _functionHash));
+      require(updateLenderLend(_amount, _lenderAddress, userRequestedCount, lenderRequestedCount, _functionHash));
+
+      // Lender pays stake and generates %
+      if(_loanPercentage > 0){
+          database.setUint(keccak256(abi.encodePacked('user/request-percentage', msg.sender, userRequestedCount)), _loanPercentage);
+          database.setUint(keccak256(abi.encodePacked('user/request-percentage', _lenderAddress, lenderRequestedCount)), _loanPercentage);
+      }
+      emit LogNewTokenLoanRequest(msg.sender, _amount);
+      return true;
+    }
+
+  function cancelRequest(
+    uint _userRequestedCount
+    )
   whenNotPaused
   nonReentrant
-  notEmptyUint(_amount)
-  noEmptyBytes(_functionHash) // Ensure that this is a stored function hash
-  public
-  returns (bool){
-    require(notEmptyString(_userName));
-    require(notEmptyString(_lenderUsername));
-
-    require(usernameExists(_userName));
-    require(usernameExists(_lenderUsername));
-
-    require(levelApproved(uint(1), _userName));
-    require(levelApproved(uint(1), _lenderUsername));
-
-    require(addressAssociatedWithUsername(_userName));
-    require(database.boolStorage(keccak256(abi.encodePacked('username/address-types-set', _userName))));
-
-    address platformStaking = database.addressStorage(keccak256(abi.encodePacked('username/address-staking', _lenderUsername)));
-    require(womToken.balanceOf(platformStaking) >= _amount);
-
-    // Track user request info
-    uint userRequestedCount = database.uintStorage(keccak256(abi.encodePacked('username/loan-requested-count', _userName)));
-    database.setUint(keccak256(abi.encodePacked('username/loan-requested-count', _userName)), userRequestedCount.add(1));
-    database.setUint(keccak256(abi.encodePacked('username/loan-requested-amount', _userName, userRequestedCount)), _amount);
-    database.setString(keccak256(abi.encodePacked('username/loan-request-lender', _userName, userRequestedCount)), _lenderUsername);
-    database.setBytes32(keccak256(abi.encodePacked('username/loan-request-function-hash', _userName, userRequestedCount)), _functionHash);
-    uint userRequestedAmount = database.uintStorage(keccak256(abi.encodePacked('username/loan-requested-amount', _userName)));
-    database.setUint(keccak256(abi.encodePacked('username/total-loan-requested-amount', _userName)), userRequestedAmount.add(_amount));
-
-    // Track lender request info
-    uint lenderRequestCount = database.uintStorage(keccak256(abi.encodePacked('username/lender-requested-count', _lenderUsername)));
-    database.setUint(keccak256(abi.encodePacked('username/lender-requested-count', _lenderUsername)), lenderRequestCount.add(1));
-    database.setUint(keccak256(abi.encodePacked('username/loan-requested-amount', _lenderUsername, userRequestedCount)), _amount);
-    database.setString(keccak256(abi.encodePacked('username/lender-request-reciever', _lenderUsername, lenderRequestCount)), _userName);
-    database.setBytes32(keccak256(abi.encodePacked('username/loan-request-function-hash', _lenderUsername, lenderRequestCount)), _functionHash);
-    uint lenderRequestAmount = database.uintStorage(keccak256(abi.encodePacked('username/lender-requested-amount', _lenderUsername)));
-    database.setUint(keccak256(abi.encodePacked('username/lender-requested-amount', _lenderUsername)), lenderRequestAmount.add(_amount));
-
-    // Lender pays stake and generates %
-    if(_loanPercentage > 0){
-        database.setUint(keccak256(abi.encodePacked('username/loan-requested-percentage', _userName, userRequestedCount)), _loanPercentage);
-        database.setUint(keccak256(abi.encodePacked('username/lender-requested-percentage', _lenderUsername, lenderRequestCount)), _loanPercentage);
-    }
-    emit LogNewTokenLoanRequest(msg.sender, _amount);
-    return true;
-  }
-
-  function declineTokenLend(
-  string _userName,
-  string _lenderUsername,
-  uint _amount,
-  uint _userRequestedCount,
-  uint _lenderRequestedCount
-  )
-  notEmptyUint(_amount)
   notEmptyUint(_userRequestedCount)
-  notEmptyUint(_lenderRequestedCount)
-  payable
+  addressSet(msg.sender)
   public
-  returns (bool){
-    require(notEmptyString(_userName));
-    require(notEmptyString(_lenderUsername));
+  returns (bool)
+    {
+      require(database.addressStorage(keccak256(abi.encodePacked('user/request-lender', msg.sender, _userRequestedCount))) == lenderAddress);
 
-    require(addressAssociatedWithUsername(_userName) || addressAssociatedWithUsername(_lenderUsername));
+      uint lenderRequestCountAtTime = database.uintStorage(keccak256(abi.encodePacked('user/request-lender-count', msg.sender, _userRequestedCount)));
+      address lenderAddress = database.addressStorage(keccak256(abi.encodePacked('user/request-lender', msg.sender, _userRequestedCount)));
 
-    require(
-      keccak256(abi.encodePacked(database.stringStorage(keccak256(abi.encodePacked('username/loan-request-lender', _userName, _userRequestedCount)))))
-      ==
-      keccak256(abi.encodePacked(_lenderUsername)));
+      require(database.addressStorage(keccak256(abi.encodePacked('user/lender-request-reciever', lenderAddress, lenderRequestCountAtTime))) == msg.sender);
 
-    require(
-      keccak256(abi.encodePacked(database.stringStorage(keccak256(abi.encodePacked('username/lender-request-reciever', _lenderUsername, _lenderRequestedCount)))))
-      ==
-      keccak256(abi.encodePacked(_userName)));
-
-    /* Delete from user profile */
-    updateUserLend(_userName, _userRequestedCount, _amount); // Needs validation
+      require(deleteUserRequest(msg.sender, lenderAddress, _userRequestedCount));
 
 
-    /* Delete from lender profile */
+    }
 
-  }
+  // Shifts mapping
+  function deleteUserRequest(
+    address _userAddress,
+    address _lenderAddress,
+    uint _userRequestedCount)
+  internal
+  returns (bool)
+    {
+      uint userCurrentCount = database.uintStorage(keccak256(abi.encodePacked('user/request-count', _userAddress)));
+      uint amountRequested = database.uintStorage(keccak256(abi.encodePacked('user/request-amount', _userAddress, _userRequestedCount)));
+      uint totalAmountRequested = database.uintStorage(keccak256(abi.encodePacked('user/total-request-amount', _userAddress)));
 
-  /* Shift from current count max to requested initiated count */
-  function updateUserLend(
-    string _userName,
+      /* Move top position to current */
+      database.setUint(keccak256(abi.encodePacked('user/request-amount', _userAddress, _userRequestedCount)),
+          database.uintStorage(keccak256(abi.encodePacked('user/request-amount', _userAddress, userCurrentCount))
+      ));
+
+      database.setAddress(keccak256(abi.encodePacked('user/request-lender', _userAddress, _userRequestedCount)),
+          database.addressStorage(keccak256(abi.encodePacked('user/request-lender', _userAddress, userCurrentCount)))
+      );
+
+      database.setBytes32(keccak256(abi.encodePacked('user/request-function-hash', _userAddress, _userRequestedCount)),
+          database.bytes32Storage(keccak256(abi.encodePacked('user/request-function-hash', _userAddress, userCurrentCount)))
+      );
+
+      database.setUint(keccak256(abi.encodePacked('user/total-request-amount', _userAddress)),
+          totalAmountRequested.sub(amountRequested)
+      );
+
+     database.setUint(keccak256(abi.encodePacked('user/request-count', _userAddress)),
+          userCurrentCount.sub(1)
+      );
+
+
+      /* TODO; Could delete the top values, but we've reduced the count, so it will just overwrite. */
+      return true;
+    }
+
+  function deleteLenderRequest(
+    address _userAddress,
+    address _lenderAddress,
     uint _userRequestedCount,
-    uint _amount
-    )
-    internal
-    returns (bool){
-
-      uint userRequestedCount = database.uintStorage(keccak256(abi.encodePacked('username/loan-requested-count', _userName)));
-
-      /* Delete first */
-      database.deleteUint(keccak256(abi.encodePacked('username/loan-requested-amount', _userName, _userRequestedCount)));
-      database.deleteString(keccak256(abi.encodePacked('username/loan-request-lender', _userName, _userRequestedCount)));
-      database.deleteBytes32(keccak256(abi.encodePacked('username/loan-request-function-hash', _userName, _userRequestedCount)));
-
-      uint userRequestedAmount = database.uintStorage(keccak256(abi.encodePacked('username/total-loan-requested-amount', _userName)));
-
-      require(userRequestedAmount.sub(_amount) >= 0); // probably unecessary
-      database.setUint(keccak256(abi.encodePacked('username/total-loan-requested-amount', _userName)), userRequestedCount.sub(_amount));
-
-
-
-
+    uint _lenderRequestedCount)
+  internal
+  returns (bool)
+    {
       return true;
     }
 
 
-  function initiateTokenLend()
-  payable
-  public
-  returns (bool){
 
+
+    /* TODO:
+        updateUserLend && updateLenderLend can be broken down into one modular function
+        have same hash variable names, but just have a bool that states who is the lender*/
+  function updateUserLend(
+    uint _amount,
+    address _lenderAddress,
+    uint _userRequestedCount,
+    uint _lenderRequestedCount,
+    bytes32 _functionHash)
+  internal
+  returns (bool){
+    database.setUint(keccak256(abi.encodePacked('user/request-count', msg.sender)), _userRequestedCount);
+    database.setUint(keccak256(abi.encodePacked('user/request-lender-count', msg.sender, _userRequestedCount)), _lenderRequestedCount);
+    database.setUint(keccak256(abi.encodePacked('user/request-amount', msg.sender, _userRequestedCount)), _amount);
+    database.setAddress(keccak256(abi.encodePacked('user/request-lender', msg.sender, _userRequestedCount)), _lenderAddress);
+    database.setBytes32(keccak256(abi.encodePacked('user/request-function-hash', msg.sender, _userRequestedCount)), _functionHash);
+    uint userRequestedAmount = database.uintStorage(keccak256(abi.encodePacked('user/requested-amount', msg.sender)));
+    database.setUint(keccak256(abi.encodePacked('user/total-request-amount', msg.sender)), userRequestedAmount.add(_amount));
+    return true;
+  }
+
+  function updateLenderLend(
+    uint _amount,
+    address _lenderAddress,
+    uint _userRequestedCount,
+    uint _lenderRequestedCount,
+    bytes32 _functionHash)
+  internal
+  returns (bool){
+    database.setUint(keccak256(abi.encodePacked('user/lender-request-count', _lenderAddress)), _lenderRequestedCount);
+    database.setUint(keccak256(abi.encodePacked('user/lender-request-user-count', _lenderAddress, _lenderRequestedCount)), _userRequestedCount);
+    database.setUint(keccak256(abi.encodePacked('user/lender-request-amount', _lenderAddress, _lenderRequestedCount)), _amount);
+    database.setAddress(keccak256(abi.encodePacked('user/lender-request-reciever', _lenderAddress, _lenderRequestedCount)), msg.sender);
+    database.setBytes32(keccak256(abi.encodePacked('user/lender-request-function-hash', _lenderAddress, _lenderRequestedCount)), _functionHash);
+    uint lenderRequestAmount = database.uintStorage(keccak256(abi.encodePacked('user/lender-request-amount', _lenderAddress)));
+    database.setUint(keccak256(abi.encodePacked('user/lender-request-amount', _lenderAddress)), lenderRequestAmount.add(_amount));
+    return true;
   }
 
 
 
-  // ------------ View Functions ------------ //
-  function addressAssociatedWithUsername(string _userName)
-  view
-  public
-  returns (bool){
-    return database.boolStorage(keccak256(abi.encodePacked('username/address-assocation', msg.sender, _userName)));
-  }
 
-  function usernameExists(string _userName)
-  whenNotPaused
+  function levelApproved(uint _profileLevel, address _user)
   view
   public
   returns (bool){
-    notEmptyString(_userName);
-    return database.boolStorage(keccak256(abi.encodePacked('username', _userName)));
-  }
-
-  function levelApproved(uint _profileLevel, string _userName)
-  view
-  public
-  returns (bool){
-    require(database.uintStorage(keccak256(abi.encodePacked("username/profileAccess", _userName))) >= uint(_profileLevel));
-    require(database.uintStorage(keccak256(abi.encodePacked("username/profileAccessExpiration", _userName))) > now);
+    require(database.uintStorage(keccak256(abi.encodePacked("user/profileAccess", _user))) >= uint(_profileLevel));
+    require(database.uintStorage(keccak256(abi.encodePacked("user/profileAccessExpiration", _user))) > now);
     return true;
   }
 
@@ -201,8 +209,19 @@ contract TokenLending {
     return true;
   }
 
+  modifier addressSet(address _param){
+    require(database.boolStorage(keccak256(abi.encodePacked('address-taken', _param))));
+    _;
+  }
+
+
 
   // ------------ Modifiers ------------ //
+  modifier noEmptyAddress(address _param) {
+    require(_param != address(0));
+    _;
+  }
+
   modifier notEmptyUint(uint _param){
     require(_param != 0 && _param > 0);
     _;
