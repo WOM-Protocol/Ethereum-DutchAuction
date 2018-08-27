@@ -166,8 +166,8 @@ contract TokenLending {
   view
   public
   returns (bool){
-    require(database.uintStorage(keccak256(abi.encodePacked("user/profileAccess", _user))) >= uint(_profileLevel));
-    require(database.uintStorage(keccak256(abi.encodePacked("user/profileAccessExpiration", _user))) > now);
+    require(database.uintStorage(keccak256(abi.encodePacked('user/profileAccess', _user))) >= uint(_profileLevel));
+    require(database.uintStorage(keccak256(abi.encodePacked('user/profileAccessExpiration', _user))) > now);
     return true;
   }
 
@@ -203,7 +203,7 @@ contract TokenLending {
   }
 
   modifier whenNotPaused {
-    require(!database.boolStorage(keccak256(abi.encodePacked("pause", this))));
+    require(!database.boolStorage(keccak256(abi.encodePacked('pause', this))));
     _;
   }
 

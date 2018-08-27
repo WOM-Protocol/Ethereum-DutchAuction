@@ -1,6 +1,6 @@
 pragma solidity 0.4.24;
 
-import "./Database.sol";
+import './Database.sol';
 
 contract ContractManager{
   Database public database;
@@ -15,7 +15,7 @@ contract ContractManager{
   function setDeployFinished()
   external
   anyOwner {
-    database.setBool(keccak256("deployFinished"), true);
+    database.setBool(keccak256('deployFinished'), true);
   }
 
   function addContract(string _name, address _contractAddress, address _functionSigner)
@@ -24,37 +24,37 @@ contract ContractManager{
   noEmptyString(_name)
   anyOwner {
     require(msg.sender != _functionSigner);
-    require(database.boolStorage(keccak256(this, _functionSigner, "addContract", keccak256(_contractAddress))) || database.boolStorage(keccak256("deployFinished")) == false);
+    require(database.boolStorage(keccak256(this, _functionSigner, 'addContract', keccak256(_contractAddress))) || database.boolStorage(keccak256('deployFinished')) == false);
     require(!contractExists(_contractAddress));
-    require(database.addressStorage(keccak256(abi.encodePacked("contract", _name))) == address(0));
-    database.setBool(keccak256(abi.encodePacked(this, _functionSigner, "addContract", keccak256(abi.encodePacked(_contractAddress)))), false);
-    database.setAddress(keccak256(abi.encodePacked("contract", _name)), _contractAddress);
-    database.setBool(keccak256(abi.encodePacked("contract", _contractAddress)), true);
+    require(database.addressStorage(keccak256(abi.encodePacked('contract', _name))) == address(0));
+    database.setBool(keccak256(abi.encodePacked(this, _functionSigner, 'addContract', keccak256(abi.encodePacked(_contractAddress)))), false);
+    database.setAddress(keccak256(abi.encodePacked('contract', _name)), _contractAddress);
+    database.setBool(keccak256(abi.encodePacked('contract', _contractAddress)), true);
     emit LogContractAdded(_contractAddress, _name, block.number);
   }
 
   function removeContract(string _name, address _functionSigner)
   external
   noEmptyString(_name)
-  multiSigRequired(_functionSigner, "removeContract", keccak256(_name))
+  multiSigRequired(_functionSigner, 'removeContract', keccak256(_name))
   anyOwner {
-    address contractToDelete = database.addressStorage(keccak256("contract", _name));
+    address contractToDelete = database.addressStorage(keccak256('contract', _name));
     require(contractExists(contractToDelete));
-    database.deleteBool(keccak256("contract", contractToDelete));
-    database.deleteAddress(keccak256("contract", _name));
+    database.deleteBool(keccak256('contract', contractToDelete));
+    database.deleteAddress(keccak256('contract', _name));
     emit LogContractRemoved(contractToDelete, _name, block.number);
   }
 
   function updateContract(string _name, address _newContractAddress, address _functionSigner)
   external
   noEmptyAddress(_newContractAddress)
-  multiSigRequired(_functionSigner, "updateContract", keccak256(_newContractAddress))
+  multiSigRequired(_functionSigner, 'updateContract', keccak256(_newContractAddress))
   anyOwner {
-    address oldAddress = database.addressStorage(keccak256("contract", _name));
+    address oldAddress = database.addressStorage(keccak256('contract', _name));
     require (contractExists(oldAddress));
-    database.setAddress(keccak256("contract", _name), _newContractAddress);
-    database.setBool(keccak256("contract", _newContractAddress), true);
-    database.deleteBool(keccak256("contract", oldAddress));
+    database.setAddress(keccak256('contract', _name), _newContractAddress);
+    database.setBool(keccak256('contract', _newContractAddress), true);
+    database.deleteBool(keccak256('contract', oldAddress));
     emit LogContractUpdated(oldAddress, _name, block.number);
     emit LogNewContractLocation(_newContractAddress, _name, block.number);
   }
@@ -63,7 +63,7 @@ contract ContractManager{
   public
   view
   returns (bool){
-    return database.boolStorage(keccak256(abi.encodePacked("contract", _contract)));
+    return database.boolStorage(keccak256(abi.encodePacked('contract', _contract)));
   }
 
   // ------------------------------------------------------------------------------------------------
@@ -72,7 +72,7 @@ contract ContractManager{
 
 
   modifier anyOwner {
-    require(database.boolStorage(keccak256(abi.encodePacked("owner", msg.sender))));
+    require(database.boolStorage(keccak256(abi.encodePacked('owner', msg.sender))));
     _;
   }
 

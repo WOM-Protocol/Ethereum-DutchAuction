@@ -19,9 +19,9 @@ contract Database {
   // This is the first contract to get deployed. Will store all data + references to other contracts
   constructor(address _ownerOne, address _ownerTwo, address _ownerThree)
       public {
-          boolStorage[keccak256(abi.encodePacked("owner", _ownerOne))] = true;
-          boolStorage[keccak256(abi.encodePacked("owner", _ownerTwo))] = true;
-          boolStorage[keccak256(abi.encodePacked("owner", _ownerThree))] = true;
+          boolStorage[keccak256(abi.encodePacked('owner', _ownerOne))] = true;
+          boolStorage[keccak256(abi.encodePacked('owner', _ownerTwo))] = true;
+          boolStorage[keccak256(abi.encodePacked('owner', _ownerThree))] = true;
           emit LogInitialized(_ownerOne, _ownerTwo, _ownerThree);
   }
   // ContractManager will be the only contract that can add/remove contracts on the platform.
@@ -29,10 +29,10 @@ contract Database {
   function setContractManager(address _contractManager)
   external {
     require(_contractManager != address(0));
-    require(boolStorage[keccak256(abi.encodePacked("owner", msg.sender))]);
-    require(addressStorage[keccak256(abi.encodePacked("contract", "ContractManager"))] == address(0));
-    addressStorage[keccak256(abi.encodePacked("contract", "ContractManager"))] = _contractManager;
-    boolStorage[keccak256(abi.encodePacked("contract", _contractManager))] = true;
+    require(boolStorage[keccak256(abi.encodePacked('owner', msg.sender))]);
+    require(addressStorage[keccak256(abi.encodePacked('contract', 'ContractManager'))] == address(0));
+    addressStorage[keccak256(abi.encodePacked('contract', 'ContractManager'))] = _contractManager;
+    boolStorage[keccak256(abi.encodePacked('contract', _contractManager))] = true;
   }
 
     // --------------------Set Functions------------------------
@@ -139,7 +139,7 @@ contract Database {
 
     // Caller must be registered as a contract within the WOM Dapp
     modifier onlyRegisteredContract() {
-        require(boolStorage[keccak256(abi.encodePacked("contract", msg.sender))]);
+        require(boolStorage[keccak256(abi.encodePacked('contract', msg.sender))]);
         _;
     }
 

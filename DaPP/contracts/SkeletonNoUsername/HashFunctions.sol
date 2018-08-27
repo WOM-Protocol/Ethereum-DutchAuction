@@ -28,7 +28,7 @@ contract HashFunctions {
   external
   pure
   returns (bytes32) {
-    return keccak256(abi.encodePacked("contract", _name));
+    return keccak256(abi.encodePacked('contract', _name));
   }
 
   function stringAddress(string _param, address _paramTwo)

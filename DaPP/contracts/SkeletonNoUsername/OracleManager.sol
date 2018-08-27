@@ -52,24 +52,24 @@ contract OracleManager is usingOraclize{
 
   function ethUSDCallback(bytes32 myid, string result)
   internal {
-    uint priceTimeline = database.uintStorage(keccak256("priceUpdateTimeline"));
-    database.setUint(keccak256("ethUSDPrice"), parseInt(result));
-    database.setUint(keccak256("ethUSDPriceExpiration"), (priceTimeline + now));
+    uint priceTimeline = database.uintStorage(keccak256('priceUpdateTimeline'));
+    database.setUint(keccak256('ethUSDPrice'), parseInt(result));
+    database.setUint(keccak256('ethUSDPriceExpiration'), (priceTimeline + now));
     database.deleteBool(myid);
     emit LogETHUSDCallback(myid, parseInt(result), now);
   }
 
   function womUSDCallback(bytes32 myid, string result)
   internal {
-    uint priceTimeline = database.uintStorage(keccak256("priceUpdateTimeline"));
-    database.setUint(keccak256("womUSDPrive"), parseInt(result));
-    database.setUint(keccak256("womUSDPriceExpiration"), (priceTimeline + now));
+    uint priceTimeline = database.uintStorage(keccak256('priceUpdateTimeline'));
+    database.setUint(keccak256('womUSDPrive'), parseInt(result));
+    database.setUint(keccak256('womUSDPriceExpiration'), (priceTimeline + now));
     emit LogWOMUSDCallback(myid, parseInt(result), now);
   }
 
   // ------------ Modifiers ------------ //
   modifier whenNotPaused {
-    require(!database.boolStorage(keccak256(abi.encodePacked("pause", this))));
+    require(!database.boolStorage(keccak256(abi.encodePacked('pause', this))));
     _;
   }
 

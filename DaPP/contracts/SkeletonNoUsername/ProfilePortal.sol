@@ -38,7 +38,7 @@ contract ProfilePortal {
 
   // ------------ Modifiers ------------ //
   modifier whenNotPaused {
-    require(!database.boolStorage(keccak256(abi.encodePacked("pause", this))));
+    require(!database.boolStorage(keccak256(abi.encodePacked('pause', this))));
     _;
   }
 
