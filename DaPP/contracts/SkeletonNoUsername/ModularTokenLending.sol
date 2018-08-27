@@ -49,8 +49,8 @@ contract TokenLending {
     uint lenderRequestedCount = database.uintStorage(keccak256(abi.encodePacked('lending/count', _lenderAddress))).add(1);
 
     require(
-      updateLend(_amount, msg.sender, _lenderAddress, userRequestedCount, lenderRequestedCount, _functionHash, false, false, 0) &&   // Updates users storage
-      updateLend(_amount, _lenderAddress, msg.sender, lenderRequestedCount, userRequestedCount, _functionHash, true, false, 0)      // Updates lender storage
+      updateLend(_amount, msg.sender, _lenderAddress, userRequestedCount, lenderRequestedCount, _functionHash, false, true) &&   // Updates users storage
+      updateLend(_amount, _lenderAddress, msg.sender, lenderRequestedCount, userRequestedCount, _functionHash, true, true)      // Updates lender storage
       );
 
     // Lender pays stake and generates %
@@ -77,6 +77,9 @@ contract TokenLending {
     require(levelApproved(uint(1), msg.sender));
     require(levelApproved(uint(1), _lenderAddress));
 
+    require(database.boolStorage(keccak256(abi.encodePacked('lending/active-request', _userAddress, _userRequestedCount))));
+    require(database.boolStorage(keccak256(abi.encodePacked('lending/active-request', _lenderAddress, _lenderRequestedCount))));
+
     require(msg.sender == _userAddress || msg.sender == _lenderAddress);
 
     require(database.addressStorage(keccak256(abi.encodePacked('lending/lender', _userAddress, _userRequestedCount))) == _lenderAddress);
@@ -86,39 +89,13 @@ contract TokenLending {
     uint lenderCurrentCount = database.uintStorage(keccak256(abi.encodePacked('lending/count', _lenderAddress)));
 
 
-    require(deletionLend(
-        database.uintStorage(keccak256(abi.encodePacked('lending/amount', _userAddress, _userRequestedCount))),
-        _userAddress));
-/*    require(
-      updateLend(
-          database.uintStorage(keccak256(abi.encodePacked('lending/amount', _userAddress, userCurrentCount))),
-          _userAddress,
-          _lenderAddress,
-          _userRequestedCount,
-          _lenderRequestedCount,
-          database.bytes32Storage(keccak256(abi.encodePacked('lending/function-hash', _userAddress, userCurrentCount))),
-          false,
-          true,
-          userCurrentCount.sub(1)));
-    /*
-    &&
-    deletionLend(
-        database.uintStorage(keccak256(abi.encodePacked('lending/amount', _lenderAddress, _userRequestedCount))),
-        _lenderAddress)
-    &&
-    updateLend(
-        database.uintStorage(keccak256(abi.encodePacked('lending/amount', _userAddress, lenderCurrentCount))),
-        _lenderAddress,
-        _userAddress,
-        _lenderRequestedCount,
-        _userRequestedCount,
-        database.bytes32Storage(keccak256(abi.encodePacked('lending/function-hash', _userAddress, lenderCurrentCount))),
-        true,
-        true,
-        lenderCurrentCount.sub(1))
-    );
-    */
-      return true;
+
+    require(deletionLend(database.uintStorage(keccak256(abi.encodePacked('lending/amount', _userAddress, _userRequestedCount))),_userAddress));
+    require(deletionLend(database.uintStorage(keccak256(abi.encodePacked('lending/amount', _lenderAddress, _userRequestedCount))),_lenderAddress));
+
+    database.deleteBool(keccak256(abi.encodePacked('lending/active-request', _userAddress, _userRequestedCount)));
+    database.deleteBool(keccak256(abi.encodePacked('lending/active-request', _lenderAddress, _lenderRequestedCount)));
+    return true;
   }
 
 
@@ -130,8 +107,7 @@ contract TokenLending {
     uint _addressCount2,
     bytes32 _functionHash,
     bool _lender,
-    bool _deletion,
-    uint _addressCountNewMax)
+    bool _active)
   internal
   returns (bool){
     database.setUint(keccak256(abi.encodePacked('lending/amount', _address1, _addressCount1)), _amount);
@@ -139,16 +115,13 @@ contract TokenLending {
     database.setUint(keccak256(abi.encodePacked('lending/address-association-count', _address1, _addressCount1)), _addressCount2);
     database.setBytes32(keccak256(abi.encodePacked('lending/function-hash', _address1, _addressCount1)), _functionHash);
     database.setBool(keccak256(abi.encodePacked('lending/lender', _address1, _addressCount1)), _lender);
+    database.setBool(keccak256(abi.encodePacked('lending/active-request', _address1, _addressCount1)), _active);
 
-    if(!_deletion){
-      database.setUint(keccak256(abi.encodePacked('lending/count', _address1)), _addressCount1);
-      uint userRequestedAmount = database.uintStorage(keccak256(abi.encodePacked('lending/total-amount', _address1)));
-      database.setUint(keccak256(abi.encodePacked('lending/total-amount', _address1)), userRequestedAmount.add(_amount));
-    }
-    else{
-      require(_addressCountNewMax != 0);
-      database.setUint(keccak256(abi.encodePacked('lending/count', _address1)), _addressCountNewMax);
-    }
+
+    database.setUint(keccak256(abi.encodePacked('lending/count', _address1)), _addressCount1);
+    uint userRequestedAmount = database.uintStorage(keccak256(abi.encodePacked('lending/total-amount', _address1)));
+    database.setUint(keccak256(abi.encodePacked('lending/total-amount', _address1)), userRequestedAmount.add(_amount));
+
     return true;
   }
 
