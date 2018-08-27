@@ -52,18 +52,18 @@ contract OracleManager is usingOraclize{
 
   function ethUSDCallback(bytes32 myid, string result)
   internal {
-    uint priceTimeline = database.uintStorage(keccak256('priceUpdateTimeline'));
+    uint updatePriceTime = database.uintStorage(keccak256('updatePriceTime'));
     database.setUint(keccak256('ethUSDPrice'), parseInt(result));
-    database.setUint(keccak256('ethUSDPriceExpiration'), (priceTimeline + now));
+    database.setUint(keccak256('ethUSDPriceExpiration'), (updatePriceTime + now));
     database.deleteBool(myid);
     emit LogETHUSDCallback(myid, parseInt(result), now);
   }
 
   function womUSDCallback(bytes32 myid, string result)
   internal {
-    uint priceTimeline = database.uintStorage(keccak256('priceUpdateTimeline'));
+    uint updatePriceTime = database.uintStorage(keccak256('updatePriceTime'));
     database.setUint(keccak256('womUSDPrive'), parseInt(result));
-    database.setUint(keccak256('womUSDPriceExpiration'), (priceTimeline + now));
+    database.setUint(keccak256('womUSDPriceExpiration'), (updatePriceTime + now));
     emit LogWOMUSDCallback(myid, parseInt(result), now);
   }
 

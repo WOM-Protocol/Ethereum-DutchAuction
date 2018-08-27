@@ -14,6 +14,8 @@ Database public database;
   function startDapp(address _valueCreationFund)
   external  {
     database.setAddress(keccak256(abi.encodePacked('ValueCreationFund')), _valueCreationFund);
+    database.setUint(keccak256(abi.encodePacked('updatePriceTime')), 21600); // 6 hours.
+    database.setAddress(keccak256(abi.encodePacked('platform/yeay')), 0x0000000000000000000000000000000000000000); //Dead address
     emit LogInitialized(msg.sender, address(database), block.number);
   }
 

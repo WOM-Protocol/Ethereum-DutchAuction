@@ -66,8 +66,8 @@ contract TokenLending {
     address _userAddress,
     address _lenderAddress,
     uint _userRequestedCount,
-    uint _lenderRequestedCount,
-    bool _lender)
+    uint _lenderRequestedCount
+    )
   addressSet(msg.sender)
   addressSet(_lenderAddress)
   notEmptyUint(_userRequestedCount)
@@ -85,11 +85,6 @@ contract TokenLending {
     require(database.addressStorage(keccak256(abi.encodePacked('lending/lender', _userAddress, _userRequestedCount))) == _lenderAddress);
     require(database.addressStorage(keccak256(abi.encodePacked('lending/lender', _lenderAddress, _lenderRequestedCount))) == _userAddress);
 
-    uint userCurrentCount = database.uintStorage(keccak256(abi.encodePacked('lending/count', _userAddress)));
-    uint lenderCurrentCount = database.uintStorage(keccak256(abi.encodePacked('lending/count', _lenderAddress)));
-
-
-
     require(deletionLend(database.uintStorage(keccak256(abi.encodePacked('lending/amount', _userAddress, _userRequestedCount))),_userAddress));
     require(deletionLend(database.uintStorage(keccak256(abi.encodePacked('lending/amount', _lenderAddress, _userRequestedCount))),_lenderAddress));
 
@@ -100,9 +95,7 @@ contract TokenLending {
   }
 
 
-  function acceptRequest(
-    uint _lenderRequestedCount,
-    bool _lender)
+  function acceptRequest(uint _lenderRequestedCount)
     addressSet(msg.sender)
     notEmptyUint(_lenderRequestedCount)
     public
