@@ -68,11 +68,11 @@ contract TokenLending {
     uint _userRequestedCount,
     uint _lenderRequestedCount,
     bool _lender)
-  public
   addressSet(msg.sender)
   addressSet(_lenderAddress)
   notEmptyUint(_userRequestedCount)
   notEmptyUint(_lenderRequestedCount)
+  public
   returns (bool){
     require(levelApproved(uint(1), msg.sender));
     require(levelApproved(uint(1), _lenderAddress));
@@ -97,6 +97,31 @@ contract TokenLending {
     database.deleteBool(keccak256(abi.encodePacked('lending/active-request', _lenderAddress, _lenderRequestedCount)));
     return true;
   }
+
+
+  function acceptRequest(
+    uint _lenderRequestedCount,
+    bool _lender)
+    addressSet(msg.sender)
+    notEmptyUint(_lenderRequestedCount)
+    public
+    returns (bool){
+      require(levelApproved(uint(1), msg.sender));
+
+      require(database.boolStorage(keccak256(abi.encodePacked('lending/active-request', msg.sender, _lenderRequestedCount))));
+      require(database.boolStorage(keccak256(abi.encodePacked('lending/lender', msg.sender, _lenderRequestedCount))));
+
+      require(womToken.balanceOf(msg.sender) > database.uintStorage(keccak256(abi.encodePacked('lending/amount', msg.sender, _lenderRequestedCount))));
+      address userRequestedAddress = database.addressStorage(keccak256(abi.encodePacked('lending/address-association', msg.sender, _lenderRequestedCount)));
+      uint userRequestedCount = database.uintStorage(keccak256(abi.encodePacked('lending/address-association-count', msg.sender, _lenderRequestedCount)));
+
+      require(database.addressStorage(keccak256(abi.encodePacked('address-association', userRequestedAddress, userRequestedCount))) == msg.sender);
+
+      /*  Transfer funds for specific function */
+
+
+      return true;
+    }
 
 
   function updateLend(
