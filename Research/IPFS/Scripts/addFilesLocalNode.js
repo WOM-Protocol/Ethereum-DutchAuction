@@ -16,4 +16,9 @@ node.on('ready', async () => {
   const fileBuffer = await node.files.cat(filesAdded[0].hash)
 
   console.log('Added file contents:', fileBuffer.toString())
+
+  node.stop(() => {
+    console.log('Node now stopped due to file upload successful.')
+  })
+
 })
