@@ -32,6 +32,7 @@ contract TokenExchange{
     rpToken = ERC20BurnableAndMintable(_rpToken);
   }
 
+  /* This function requres yeay to have approved this contract to transfer funds */
   function convertYeayPointsToWOM(
     address _to,
     uint _amount,
@@ -46,8 +47,7 @@ contract TokenExchange{
 
     require(msg.sender == database.addressStorage(keccak256(abi.encodePacked('platform/yeay'))));
 
-    require(womToken.balanceOf(msg.sender) >= _amount);
-    require(womToken.transfer(_to, _amount));
+    require(womToken.allowance(msg.sender, this) >= _amount);
 
     uint totalConversionAmount = database.uintStorage(keccak256(abi.encodePacked('platform/yeay-conversion-amount')));
     uint totalConversions = database.uintStorage(keccak256(abi.encodePacked('platform/yeay-total-conversions')));
@@ -55,10 +55,22 @@ contract TokenExchange{
     database.setBytes(keccak256(abi.encodePacked('platform/yeay-conversion-hash', totalConversions)), _ipfsHash);
     database.setUint(keccak256(abi.encodePacked('platform/yeay-total-conversions')), totalConversions.add(1));
     database.setUint(keccak256(abi.encodePacked('platform/yeay-conversion-amount')), totalConversionAmount.add(_amount));
+    require(womToken.transferFrom(msg.sender, _to, _amount));
     emit LogYeayPointConversionToWom(msg.sender, _to, _amount);
     return true;
   }
 
+
+  function convertWomToRP(uint _amount)
+    nonReentrant
+    whenNotPaused
+    public
+    returns (bool){
+      require(levelApproved(uint(1), msg.sender));
+      require(womToken.balanceOf(msg.sender) >= _amount);
+
+      return true;
+    }
 
   // ------------ View/Pure functions ------------ //
   function levelApproved(uint _profileLevel, address _user)
