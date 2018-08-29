@@ -1,7 +1,7 @@
 //! Copyright Parity Technologies, 2017.
 //! Released under the Apache Licence 2.
 
-pragma solidity ^0.4.17;
+pragma solidity 0.4.24;
 
 /// Stripped down ERC20 standard token interface.
 contract Token {
@@ -50,7 +50,7 @@ contract SecondPriceAuction {
 
 	/// Simple constructor.
 	/// Token cap should take be in whole tokens, not smallest divisible units.
-	function SecondPriceAuction(
+	constructor(
 		address _certifierContract,
 		address _tokenContract,
 		address _treasury,
@@ -114,7 +114,7 @@ contract SecondPriceAuction {
 		totalAccounted += accounted;
 		totalReceived += msg.value;
 		endTime = calculateEndTime();
-		Buyin(msg.sender, accounted, msg.value, price);
+		emit Buyin(msg.sender, accounted, msg.value, price);
 
 		// send to treasury
 		treasury.transfer(msg.value);
@@ -135,7 +135,7 @@ contract SecondPriceAuction {
 		totalAccounted += accounted;
 		totalReceived += _received;
 		endTime = calculateEndTime();
-		Injected(_who, accounted, _received);
+		emit Injected(_who, accounted, _received);
 	}
 
 	/// Reverses a previous `inject` command.
@@ -148,7 +148,7 @@ contract SecondPriceAuction {
 		totalReceived -= buyins[_who].received;
 		delete buyins[_who];
 		endTime = calculateEndTime();
-		Uninjected(_who);
+		emit Uninjected(_who);
 	}
 
 	/// Mint tokens for a particular participant.
@@ -161,7 +161,7 @@ contract SecondPriceAuction {
 		// end the auction if we're the first one to finalise.
 		if (endPrice == 0) {
 			endPrice = totalAccounted / tokenCap;
-			Ended(endPrice);
+			emit Ended(endPrice);
 		}
 
 		// enact the purchase.
@@ -171,10 +171,10 @@ contract SecondPriceAuction {
 		delete buyins[_who];
 		require (tokenContract.transfer(_who, tokens));
 
-		Finalised(_who, tokens);
+		emit Finalised(_who, tokens);
 
 		if (totalFinalised == totalAccounted) {
-			Retired();
+			emit Retired();
 		}
 	}
 
@@ -184,7 +184,7 @@ contract SecondPriceAuction {
 	function flushEra() private {
 		uint currentEra = (now - beginTime) / ERA_PERIOD;
 		if (currentEra > eraIndex) {
-			Ticked(eraIndex, totalReceived, totalAccounted);
+			emit Ticked(eraIndex, totalReceived, totalAccounted);
 		}
 		eraIndex = currentEra;
 	}
@@ -195,7 +195,7 @@ contract SecondPriceAuction {
 	function setHalted(bool _halted) public only_admin { halted = _halted; }
 
 	/// Emergency function to drain the contract of any funds.
-	function drain() public only_admin { treasury.transfer(this.balance); }
+	function drain() public only_admin { treasury.transfer(address(this).balance); }
 
 	// Inspection:
 
@@ -219,7 +219,7 @@ contract SecondPriceAuction {
 
 	/// The current end time of the sale assuming that nobody else buys in.
 	function calculateEndTime() public constant returns (uint) {
-		var factor = tokenCap / DIVISOR * USDWEI;
+		uint factor = tokenCap / DIVISOR * USDWEI;
 		return beginTime + 40000000 * factor / (totalAccounted + 5 * factor) - 5760;
 	}
 

@@ -2,7 +2,7 @@
 //! By Parity Technologies, 2017.
 //! Released under the Apache Licence 2.
 
-pragma solidity 0.4.17;
+pragma solidity 0.4.24;
 
 // From Owned.sol
 contract Owned {
@@ -16,7 +16,7 @@ contract Owned {
   modifier only_owner { require (msg.sender == owner); _; }
 
   /// RESTRICTED PUBLIC METHODS
-  function setOwner(address _new) public only_owner { NewOwner(owner, _new); owner = _new; }
+  function setOwner(address _new) public only_owner { emit NewOwner(owner, _new); owner = _new; }
 }
 
 /**
@@ -105,7 +105,7 @@ contract CertifierHandler is Owned {
   /// will set the `certifier` address
   /// @param _certifier The address of the main certifier
   /// @param _treasury The address of the treasury
-  function CertifierHandler (address _certifier, address _treasury) public {
+  constructor(address _certifier, address _treasury) public {
     certifier = MultiCertifier(_certifier);
     treasury = _treasury;
   }
@@ -147,7 +147,7 @@ contract CertifierHandler is Owned {
     count++;
 
     // Send the event
-    Requested(msg.sender, who);
+    emit Requested(msg.sender, who);
 
     // Transfer the funds to the treasury
     treasury.transfer(msg.value);
@@ -178,11 +178,11 @@ contract CertifierHandler is Owned {
     locked[who] = true;
 
     // Send the Locked events
-    Locked(sender);
-    Locked(who);
+    emit Locked(sender);
+    emit Locked(who);
 
     // Send the event
-    Transfered(sender, who, msg.sender);
+    emit Transfered(sender, who, msg.sender);
   }
 
   /// RESTRICTED (owner or delegate only) PUBLIC METHODS
@@ -191,8 +191,8 @@ contract CertifierHandler is Owned {
   /// Could be needed if value is sent outside of the `claim`
   /// method (eg. contract suicide)
   function drain () external only_owner {
-    Drained(this.balance);
-    treasury.transfer(this.balance);
+    emit Drained(address(this).balance);
+    treasury.transfer(address(this).balance);
   }
 
   /// @notice Change the fee, needed if for whatever reason gas price
@@ -200,7 +200,7 @@ contract CertifierHandler is Owned {
   /// can execute this method.
   /// @param _fee The new fee
   function setFee (uint _fee) external only_owner {
-    NewFee(fee, _fee);
+    emit NewFee(fee, _fee);
     fee = _fee;
   }
 
@@ -210,7 +210,7 @@ contract CertifierHandler is Owned {
   /// new contract for example.
   /// @param _who The account to lock.
   function setLocked (address _who) external only_owner {
-    Locked(_who);
+    emit Locked(_who);
     locked[_who] = true;
   }
 
@@ -219,7 +219,7 @@ contract CertifierHandler is Owned {
   /// can execute this method.
   /// @param _treasury The new treasury address
   function setTreasury (address _treasury) external only_owner {
-    NewTreasury(treasury, _treasury);
+    emit NewTreasury(treasury, _treasury);
     treasury = _treasury;
   }
 }
