@@ -43,6 +43,9 @@ contract SecondPriceAuction {
 	/// Finalised the purchase for `who`, who has been given `tokens` tokens.
 	event Finalised(address indexed who, uint tokens);
 
+	/// Sale did not reach softcap.
+	event SoftCapNotReached(uint indexed totalReceived, uint USDWEI_SOFT_CAP, address indexed _who);
+
 	/// Auction is over. All accounts finalised.
 	event Retired();
 
@@ -66,7 +69,7 @@ contract SecondPriceAuction {
 		admin = _admin;
 		beginTime = _beginTime;
 		tokenCap = _tokenCap;
-		endTime = beginTime + 28 days;
+		endTime = beginTime + 15 days;
 	}
 
 	// No default function, entry-level users
@@ -90,7 +93,10 @@ contract SecondPriceAuction {
 			if (now >= beginTime + BONUS_MIN_DURATION				// ...but outside the automatic bonus period
 				&& lastNewInterest + BONUS_LATCH <= block.number	// ...and had no new interest for some blocks
 			) {
-				currentBonus--;
+				currentBonus -= 5;
+			}
+			if (now >= beginTime + BONUS_MAX_DURATION_ROUND) {
+				currentBonus -= 5;
 			}
 			if (now >= beginTime + BONUS_MAX_DURATION) {
 				currentBonus = 0;
@@ -115,9 +121,6 @@ contract SecondPriceAuction {
 		totalReceived += msg.value;
 		endTime = calculateEndTime();
 		emit Buyin(msg.sender, accounted, msg.value, price);
-
-		// send to treasury
-		treasury.transfer(msg.value);
 	}
 
 	/// Like buyin except no payment required and bonus automatically given.
@@ -156,6 +159,7 @@ contract SecondPriceAuction {
 		public
 		when_not_halted
 		when_ended
+		when_soft_met
 		only_buyins(_who)
 	{
 		// end the auction if we're the first one to finalise.
@@ -170,6 +174,7 @@ contract SecondPriceAuction {
 		totalFinalised += total;
 		delete buyins[_who];
 		require (tokenContract.transfer(_who, tokens));
+		// Need to approve this contract in ERC contract for 350
 
 		emit Finalised(_who, tokens);
 
@@ -177,6 +182,27 @@ contract SecondPriceAuction {
 			emit Retired();
 		}
 	}
+
+	// Return ether to participant if softcap is not met.
+	function claimRefund(address _who)
+		public
+		when_not_halted
+		when_ended
+		when_soft_not_met
+		only_buyins(_who)
+	{
+		emit SoftCapNotReached(totalReceived, USDWEI_SOFT_CAP, _who);
+
+		uint total = buyins[_who].received;
+		totalFinalised += total;
+		delete buyins[_who];
+		_who.transfer(total);
+
+		if (totalFinalised == totalReceived) {
+			emit Retired();
+		}
+	}
+
 
 	// Prviate utilities:
 
@@ -279,6 +305,9 @@ contract SecondPriceAuction {
 	/// True if all buyins have finalised.
 	function allFinalised() public constant returns (bool) { return now >= endTime && totalAccounted == totalFinalised; }
 
+	/// True is ether recieved greater than softcap.
+	function softCapMet() public constant returns (bool) { return totalReceived >= USDWEI_SOFT_CAP; }
+
 	/// Returns true if the sender of this transaction is a basic account.
 	function isBasicAccount(address _who) internal constant returns (bool) {
 		uint senderCodeSize;
@@ -301,6 +330,12 @@ contract SecondPriceAuction {
 
 	/// Ensure we're not halted.
 	modifier when_not_halted { require (!halted); _; }
+
+	/// Ensure soft cap has been met.
+	modifier when_soft_met { require (softCapMet()); _; }
+
+	/// Ensure soft cap has not been met.
+	modifier when_soft_not_met { require (!softCapMet()); _; }
 
 	/// Ensure `_who` is a participant.
 	modifier only_buyins(address _who) { require (buyins[_who].accounted != 0); _; }
@@ -353,7 +388,7 @@ contract SecondPriceAuction {
 	bool public halted;
 
 	/// The current percentage of bonus that purchasers get.
-	uint8 public currentBonus = 15;
+	uint8 public currentBonus = 20;
 
 	/// The last block that had a new participant.
 	uint32 public lastNewInterest;
@@ -403,13 +438,19 @@ contract SecondPriceAuction {
 	uint constant public BONUS_MIN_DURATION = 1 hours;
 
 	/// Minimum duration after sale begins that bonus is active.
-	uint constant public BONUS_MAX_DURATION = 24 hours;
+	uint constant public BONUS_MAX_DURATION = 4 days;
+
+	// Maximum duration of each bonus round is active
+	uint constant public BONUS_MAX_DURATION_ROUND = 24 hours;
 
 	/// Number of consecutive blocks where there must be no new interest before bonus ends.
 	uint constant public BONUS_LATCH = 2;
 
 	/// Number of Wei in one USD, constant.
-	uint constant public USDWEI = 3226 szabo;
+	uint constant public USDWEI = 3600 szabo;
+
+	/// Soft cap 10m USD in wei.
+	uint constant public USDWEI_SOFT_CAP = 35970 ether;
 
 	/// Divisor of the token.
 	uint constant public DIVISOR = 1000;
