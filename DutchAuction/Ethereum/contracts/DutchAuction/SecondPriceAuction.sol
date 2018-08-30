@@ -6,6 +6,7 @@ pragma solidity 0.4.24;
 /// Stripped down ERC20 standard token interface.
 contract Token {
 	function transfer(address _to, uint256 _value) public returns (bool success);
+	function approveAndCall(address _spender, uint _amount, bytes _data) public returns (bool success);
 }
 
 // From Certifier.sol
@@ -56,6 +57,7 @@ contract SecondPriceAuction {
 	constructor(
 		address _certifierContract,
 		address _tokenContract,
+		address _tokenVesting,
 		address _treasury,
 		address _admin,
 		uint _beginTime,
@@ -65,6 +67,7 @@ contract SecondPriceAuction {
 	{
 		certifier = Certifier(_certifierContract);
 		tokenContract = Token(_tokenContract);
+		tokenVesting = _tokenVesting;
 		treasury = _treasury;
 		admin = _admin;
 		beginTime = _beginTime;
@@ -83,23 +86,26 @@ contract SecondPriceAuction {
 		payable
 		when_not_halted
 		when_active
+		not_pre_sale_member(msg.sender)
 		only_eligible(msg.sender, v, r, s)
 	{
 		flushEra();
 
 		// Flush bonus period:
-		if (currentBonus > 0) {
+		if (currentBonus > 0 && currentBonusRound <= 4) {
 			// Bonus is currently active...
 			if (now >= beginTime + BONUS_MIN_DURATION				// ...but outside the automatic bonus period
 				&& lastNewInterest + BONUS_LATCH <= block.number	// ...and had no new interest for some blocks
 			) {
 				currentBonus -= 5;
-			}
-			if (now >= beginTime + BONUS_MAX_DURATION_ROUND) {
-				currentBonus -= 5;
+				currentBonusRound++;
 			}
 			if (now >= beginTime + BONUS_MAX_DURATION) {
 				currentBonus = 0;
+			}
+			if (now >= beginTime + (BONUS_MAX_DURATION_ROUND*currentBonusRound)) {
+				currentBonus -= 5;
+				currentBonusRound++;
 			}
 			if (buyins[msg.sender].received == 0) {	// We have new interest
 				lastNewInterest = uint32(block.number);
@@ -124,17 +130,18 @@ contract SecondPriceAuction {
 	}
 
 	/// Like buyin except no payment required and bonus automatically given.
-	function inject(address _who, uint128 _received)
+	function inject(address _who, uint128 _received, uint128 _appliedBonus)
 		public
 		only_admin
 		only_basic(_who)
 		before_beginning
 	{
-		uint128 bonus = _received * uint128(currentBonus) / 100;
+		uint128 bonus = _received * uint128(_appliedBonus) / 100;
 		uint128 accounted = _received + bonus;
 
 		buyins[_who].accounted += accounted;
 		buyins[_who].received += _received;
+		buyins[_who].presale = true;
 		totalAccounted += accounted;
 		totalReceived += _received;
 		endTime = calculateEndTime();
@@ -172,9 +179,16 @@ contract SecondPriceAuction {
 		uint total = buyins[_who].accounted;
 		uint tokens = total / endPrice;
 		totalFinalised += total;
+		bool presale = buyins[_who].presale;
+
 		delete buyins[_who];
-		require (tokenContract.transfer(_who, tokens));
-		// Need to approve this contract in ERC contract for 350
+
+		if(presale){
+			require (tokenContract.approveAndCall(tokenVesting, total, toBytes(_who)));
+		}
+		else{
+			require (tokenContract.transfer(_who, tokens));
+		}
 
 		emit Finalised(_who, tokens);
 
@@ -191,6 +205,7 @@ contract SecondPriceAuction {
 		when_soft_not_met
 		only_buyins(_who)
 	{
+		//TODO; add check if already emitted
 		emit SoftCapNotReached(totalReceived, USDWEI_SOFT_CAP, _who);
 
 		uint total = buyins[_who].received;
@@ -299,6 +314,19 @@ contract SecondPriceAuction {
 		return _value * uint(currentBonus) / 100;
 	}
 
+	function toBytes(address a)
+		internal
+		pure
+		returns
+		(bytes b){
+		   assembly {
+		        let m := mload(0x40)
+		        mstore(add(m, 20), xor(0x140000000000000000000000000000000000000000, a))
+		        mstore(0x40, add(m, 52))
+		        b := m
+		   }
+		}
+
 	/// True if the sale is ongoing.
 	function isActive() public constant returns (bool) { return now >= beginTime && now < endTime; }
 
@@ -340,6 +368,10 @@ contract SecondPriceAuction {
 	/// Ensure `_who` is a participant.
 	modifier only_buyins(address _who) { require (buyins[_who].accounted != 0); _; }
 
+	/// Ensure same address for pre-sale is not used for public, to ensure clear
+	/// devide of vested tokens and non-vested tokens.
+	modifier not_pre_sale_member(address _who) { require (!buyins[_who].presale); _;}
+
 	/// Ensure sender is admin.
 	modifier only_admin { require (msg.sender == admin); _; }
 
@@ -363,6 +395,7 @@ contract SecondPriceAuction {
 	struct Account {
 		uint128 accounted;	// including bonus & hit
 		uint128 received;	// just the amount received, without bonus & hit
+		bool presale; // if the investor was involved in presale & funds will be locked for vesting period.
 	}
 
 	/// Those who have bought in to the auction.
@@ -376,6 +409,9 @@ contract SecondPriceAuction {
 
 	/// Total amount of ether which has been finalised.
 	uint public totalFinalised = 0;
+
+	/// Current iteration of bonus round.
+	uint public currentBonusRound = 1;
 
 	/// The current end time. Gets updated when new funds are received.
 	uint public endTime;
@@ -400,6 +436,9 @@ contract SecondPriceAuction {
 
 	/// The certifier.
 	Certifier public certifier;
+
+	/// The tokens vesting contract.
+	address public tokenVesting;
 
 	/// The treasury address; where all the Ether goes.
 	address public treasury;

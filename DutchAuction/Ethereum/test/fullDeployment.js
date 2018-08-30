@@ -11,12 +11,12 @@ contract('fullDeployment', function(accounts) {
 
 	const TOKEN_SUPPLY = 1000000000;
 	const AUCTION_CAP = 350000000;
-	const BEGIN_TIME = web3.eth.getBlock(web3.eth.blockNumber).timestamp;
-
 	const TOKEN_NAME = 'WOMToken';
 	const TOKEN_SYMBOL = 'WOM';
-
 	const DECIMAL_UNITS = 18;
+	
+	const BEGIN_TIME = web3.eth.getBlock(web3.eth.blockNumber).timestamp;
+
 	let certifierHandlerInstance;
 	let multiCertifierInstance;
 	let auctionInstance;
