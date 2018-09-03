@@ -18,12 +18,15 @@ contract TokenVesting is Ownable{
 
 
     struct Account {
-      uint256 cliff;
       uint256 start;
+      uint256 cliff;
       uint256 duration;
+      uint256 monthCount;
+      uint256 paymentPerMonth;
       uint256 unreleased;
       uint256 released;
-      bool revoked;
+      uint256 cliffReleaseAmount;
+      bool cliffReleased;
     }
 
     // Validate that this is the true token contract
@@ -38,11 +41,18 @@ contract TokenVesting is Ownable{
       auctionInstance = SecondPriceAuction(_auctionAddress);
     }
 
+    /*
+       * @param _cliff duration in seconds of the cliff in which tokens will begin to vest
+       * @param _start the time (as Unix time) at which point vesting starts
+       * @param _duration duration in seconds of the period in which the tokens will vest
+       * @para whether the vesting is revocable or not
+       */
     function registerPresaleVest(
       address _who,
       uint256 _cliff,
       uint256 _start,
-      uint256 _duration)
+      uint256 _duration
+      )
       public
       onlyOwner
       notEmptyUint(_cliff)
@@ -52,7 +62,8 @@ contract TokenVesting is Ownable{
       notRegistered(_who)
     returns (bool)
     {
-      users[_who] = Account(_cliff, _start, _duration, 0, 0, false);
+      require(_cliff <= _duration);
+      users[_who] = Account(_start, _cliff, _duration, 0, 0, 0, 0, 0, false);
       emit Registration(_who, _cliff, _duration);
       return true;
     }
@@ -63,13 +74,57 @@ contract TokenVesting is Ownable{
     notEmptyAddress(token)
     notEmptyBytes(data)
     public {
-      require(data.length == 20);   // address
+      require(data.length == 20);
       require(msg.sender == tokenAddress);
-
       address _address = bytesToAddress(data);
+      uint256 duration = users[_address].duration;
+      uint256 cliffReleaseAmount = tokens.div(25);
+      uint _paymentPerMonth = tokens.sub(cliffReleaseAmount).div(duration.div(4 weeks));
+
+      users[_address].cliffReleaseAmount = cliffReleaseAmount;
       users[_address].unreleased = tokens;
+      users[_address].paymentPerMonth = _paymentPerMonth;
       emit TokensRecieved(_address, tokens, now);
     }
+
+
+    function release() public payable returns (uint256) {
+      uint256 currentBalance = users[msg.sender].unreleased;
+      uint256 start = users[msg.sender].start;
+      uint256 cliff = users[msg.sender].cliff;
+      uint256 duration = users[msg.sender].duration;
+      uint256 paymentPerMonth = users[msg.sender].paymentPerMonth;
+      uint256 timeWithCliff = now + start.add(cliff);
+      uint256 monthCount = users[msg.sender].monthCount;
+
+      if (now < start.add(cliff)) {
+        return 0;
+      }
+      else if (now >= start.add(cliff.add(duration))) {
+        users[msg.sender].released += currentBalance;
+        tokenInstance.transfer(msg.sender, currentBalance);
+        return currentBalance;
+      }
+      else if(now >= start.add(cliff)){
+        if(users[msg.sender].cliffReleased){
+          if(now >= timeWithCliff.add(monthCount.mul(4 weeks))){
+
+            users[msg.sender].released += paymentPerMonth;
+            users[msg.sender].monthCount += 1;
+            tokenInstance.transfer(msg.sender, paymentPerMonth);
+            return users[msg.sender].paymentPerMonth;
+          }
+        }
+        else{
+          users[msg.sender].cliffReleased = true;
+          users[msg.sender].released += users[msg.sender].cliffReleaseAmount;
+          tokenInstance.transfer(msg.sender, users[msg.sender].cliffReleaseAmount);
+          return 0; // Return % of the cliff
+        }
+      }
+    }
+
+
 
     function bytesToAddress(bytes bys)
     private
