@@ -11,11 +11,8 @@ contract TokenVesting is Ownable{
     mapping (address => Account) public users;
 
     address public tokenAddress;
-    address public auctionAddress;
 
     ERC20BurnableAndMintable public tokenInstance;
-    SecondPriceAuction public auctionInstance;
-
 
     struct Account {
       uint256 start;
@@ -26,19 +23,17 @@ contract TokenVesting is Ownable{
       uint256 unreleased;
       uint256 released;
       uint256 cliffReleaseAmount;
+      uint256 total;
       bool cliffReleased;
     }
 
     // Validate that this is the true token contract
-    constructor(address _tokenWOM, address _auctionAddress)
+    constructor(address _tokenWOM)
     public
     notEmptyAddress(_tokenWOM)
-    notEmptyAddress(_auctionAddress)
     {
       tokenAddress = _tokenWOM;
-      auctionAddress = _auctionAddress;
       tokenInstance = ERC20BurnableAndMintable(_tokenWOM);
-      auctionInstance = SecondPriceAuction(_auctionAddress);
     }
 
     /*
@@ -63,7 +58,9 @@ contract TokenVesting is Ownable{
     returns (bool)
     {
       require(_cliff <= _duration);
-      users[_who] = Account(_start, _cliff, _duration, 0, 0, 0, 0, 0, false);
+      users[_who].start = _start;
+      users[_who].cliff = _cliff;
+      users[_who].duration = _duration;
       emit Registration(_who, _cliff, _duration);
       return true;
     }
@@ -83,12 +80,17 @@ contract TokenVesting is Ownable{
 
       users[_address].cliffReleaseAmount = cliffReleaseAmount;
       users[_address].unreleased = tokens;
+      users[_address].total = tokens;
       users[_address].paymentPerMonth = _paymentPerMonth;
       emit TokensRecieved(_address, tokens, now);
     }
 
-
-    function release() public payable returns (uint256) {
+    // TODO; ensure value is less than given amount
+    function release()
+    isRegistered(msg.sender)
+    public
+    payable
+    returns (uint256) {
       uint256 currentBalance = users[msg.sender].unreleased;
       uint256 start = users[msg.sender].start;
       uint256 cliff = users[msg.sender].cliff;
@@ -103,12 +105,13 @@ contract TokenVesting is Ownable{
       else if (now >= start.add(cliff.add(duration))) {
         users[msg.sender].released += currentBalance;
         tokenInstance.transfer(msg.sender, currentBalance);
+        delete users[msg.sender];
         return currentBalance;
       }
       else if(now >= start.add(cliff)){
         if(users[msg.sender].cliffReleased){
-          if(now >= timeWithCliff.add(monthCount.mul(4 weeks))){
 
+          if(now >= timeWithCliff.add(monthCount.mul(4 weeks))){
             users[msg.sender].released += paymentPerMonth;
             users[msg.sender].monthCount += 1;
             tokenInstance.transfer(msg.sender, paymentPerMonth);
@@ -116,9 +119,10 @@ contract TokenVesting is Ownable{
           }
         }
         else{
-          users[msg.sender].cliffReleased = true;
           users[msg.sender].released += users[msg.sender].cliffReleaseAmount;
+          users[msg.sender].cliffReleased = true;
           tokenInstance.transfer(msg.sender, users[msg.sender].cliffReleaseAmount);
+          delete users[msg.sender].cliffReleaseAmount;
           return 0; // Return % of the cliff
         }
       }
@@ -135,6 +139,7 @@ contract TokenVesting is Ownable{
         }
     }
 
+    modifier isRegistered(address _who) { require (users[_who].start != 0); _; }
     modifier notRegistered(address _who) { require (users[_who].start == 0); _; }
     modifier notEmptyAddress(address _who) { require (_who != address(0)); _; }
     modifier notEmptyUint(uint _uint) { require (_uint != 0); _; }
@@ -144,5 +149,4 @@ contract TokenVesting is Ownable{
     event TokensRecieved(address indexed who, uint indexed amount, uint indexed timestamp);
     event Released(uint256 amount);
     event Revoked();
-
 }
