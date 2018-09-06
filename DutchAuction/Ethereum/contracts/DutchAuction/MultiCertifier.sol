@@ -4,16 +4,8 @@
 
 pragma solidity 0.4.24;
 
-// From Owned.sol
-contract Owned {
-	modifier only_owner { require (msg.sender == owner); _; }
+import '../Libraries/Ownable.sol';
 
-	event NewOwner(address indexed old, address indexed current);
-
-	function setOwner(address _new) public only_owner { emit NewOwner(owner, _new); owner = _new; }
-
-	address public owner = msg.sender;
-}
 
 // From Certifier.sol
 contract Certifier {
@@ -30,7 +22,7 @@ contract Certifier {
  * Each certified account is associated with the delegate who certified it.
  * Delegates can be added and removed only by the contract owner.
  */
-contract MultiCertifier is Owned, Certifier {
+contract MultiCertifier is Certifier, Ownable {
 	modifier only_delegate { require (msg.sender == owner || delegates[msg.sender]); _; }
 	modifier only_certifier_of(address who) { require (msg.sender == owner || msg.sender == certs[who].certifier); _; }
 	modifier only_certified(address who) { require (certs[who].active); _; }
@@ -38,10 +30,15 @@ contract MultiCertifier is Owned, Certifier {
 
 	event Confirmed(address indexed who, address indexed by);
 	event Revoked(address indexed who, address indexed by);
+	event NewOwner(address indexed old, address indexed current);
 
 	struct Certification {
 		address certifier;
 		bool active;
+	}
+
+	constructor() public {
+		owner = msg.sender;
 	}
 
 	function certify(address _who)
@@ -68,8 +65,8 @@ contract MultiCertifier is Owned, Certifier {
 	function addDelegate(address _new) public only_owner { delegates[_new] = true; }
 	function removeDelegate(address _old) public only_owner { delete delegates[_old]; }
 
-	mapping (address => Certification) certs;
-	mapping (address => bool) delegates;
+	mapping (address => Certification) public certs;
+	mapping (address => bool) public delegates;
 
 	/// Unused interface methods.
 	function get(address, string) public constant returns (bytes32) {}

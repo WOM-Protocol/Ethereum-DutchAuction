@@ -28,7 +28,7 @@ contract Ownable {
   /**
    * @dev Throws if called by any account other than the owner.
    */
-  modifier onlyOwner() {
+  modifier only_owner() {
     require(msg.sender == owner);
     _;
   }
@@ -39,7 +39,7 @@ contract Ownable {
    * It will not be possible to call the functions with the `onlyOwner`
    * modifier anymore.
    */
-  function renounceOwnership() public onlyOwner {
+  function renounceOwnership() public only_owner {
     emit OwnershipRenounced(owner);
     owner = address(0);
   }
@@ -48,7 +48,7 @@ contract Ownable {
    * @dev Allows the current owner to transfer control of the contract to a newOwner.
    * @param _newOwner The address to transfer ownership to.
    */
-  function transferOwnership(address _newOwner) public onlyOwner {
+  function transferOwnership(address _newOwner) public only_owner {
     _transferOwnership(_newOwner);
   }
 

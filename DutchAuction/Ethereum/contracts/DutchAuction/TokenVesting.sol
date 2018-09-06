@@ -49,7 +49,7 @@ contract TokenVesting is Ownable{
       uint256 _duration
       )
       public
-      onlyOwner
+      only_owner
       notEmptyUint(_cliff)
       notEmptyUint(_start)
       notEmptyUint(_duration)

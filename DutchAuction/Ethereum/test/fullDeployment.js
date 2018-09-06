@@ -5,7 +5,7 @@ const ERC20BurnableAndMintable = artifacts.require('./ERC20BurnableAndMintable.s
 const TokenVesting = artifacts.require('./TokenVesting.sol');
 
 
-contract('fullDeployment', function(accounts) {
+contract('Full Deployment Test', function(accounts) {
 	const TREASURY = accounts[0];
 	const ADMIN = accounts[1];
 	const OWNER = accounts[2];

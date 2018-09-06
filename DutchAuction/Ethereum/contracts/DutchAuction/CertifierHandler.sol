@@ -4,20 +4,7 @@
 
 pragma solidity 0.4.24;
 
-// From Owned.sol
-contract Owned {
-  /// STORAGE
-  address public owner = msg.sender;
-
-  /// EVENTS
-  event NewOwner(address indexed old, address indexed current);
-
-  /// MODIFIERS
-  modifier only_owner { require (msg.sender == owner); _; }
-
-  /// RESTRICTED PUBLIC METHODS
-  function setOwner(address _new) public only_owner { emit NewOwner(owner, _new); owner = _new; }
-}
+import '../Libraries/Ownable.sol';
 
 /**
  * @title Multi Certifier
@@ -48,7 +35,7 @@ contract MultiCertifier {
 /// After the modification of the certified address, the sender and the new account
 /// are both locked. This is to prevent people change constantly their certified
 /// address.
-contract CertifierHandler is Owned {
+contract CertifierHandler is Ownable {
   /// STORAGE
 
   // The address of the MultiCertifier,
