@@ -7,7 +7,7 @@ const TokenVesting = artifacts.require('./TokenVesting.sol');
 const AssertRevert = require('../helpers/AssertRevert.js');
 const AssertJump = require('../helpers/AssertJump.js');
 
-contract('fullDeployment', function(accounts) {
+contract('test - auction', function(accounts) {
   const OWNER = accounts[0];
 	const ADMIN = accounts[1];
   const TREASURY = accounts[2];

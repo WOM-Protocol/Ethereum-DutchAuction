@@ -199,7 +199,7 @@ contract ERC20BurnableAndMintable is ERC20Interface{
     // ------------------------------------------------------------------------
     function ()
     public
-    payable {
+     {
         revert();
     }
 

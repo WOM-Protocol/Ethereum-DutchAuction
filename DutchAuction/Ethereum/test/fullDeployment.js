@@ -20,11 +20,11 @@ contract('Full Deployment Test', function(accounts) {
 	const DAY_EPOCH = 86400;
 	const BEGIN_TIME = web3.eth.getBlock(web3.eth.blockNumber).timestamp;
 
-	let certifierHandlerInstance;
 	let multiCertifierInstance;
 	let auctionInstance;
 	let erc20Instance;
   let tokenVestingInstance;
+	let certifierHandlerInstance;
 
 	it('Deploy Token', async () => {
 		erc20Instance = await ERC20BurnableAndMintable.new(
@@ -37,8 +37,13 @@ contract('Full Deployment Test', function(accounts) {
 			assert.equal(await erc20Instance.owner(), TREASURY, 'Token owner assigned');
 	});
 
-	it('Deply MultiCertifier', async () => {
+	it('Deploy MultiCertifier', async () => {
 		multiCertifierInstance = await MultiCertifier.new();
+	});
+
+	it('Deploy CertifierHandler', async () => {
+		certifierHandlerInstance = await CertifierHandler.new(multiCertifierInstance.address, TREASURY);
+		assert.equal(await certifierHandlerInstance.treasury(), TREASURY, 'TREASURY address assigned');
 	});
 
   it('Deploy Token Vesting', async () => {
