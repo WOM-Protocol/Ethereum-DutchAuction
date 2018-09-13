@@ -10,7 +10,7 @@ All critical functions that may result in the movement of Ether/WOM or important
 # Architecture
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/wom-token/WOMDaPP/master/images/ArchitectureFirstIteration.png?token=AecS8J-Byu3fxOy2EkqxVufyb9bdI_1Mks5bUssQwA%3D%3D" alt="WOM Architecture"/>
+  <img src="https://raw.githubusercontent.com/wom-token/WOMDaPP/master/images/ArchitectureFirstIteration.png" alt="WOM Architecture"/>
 </p>
 
 
