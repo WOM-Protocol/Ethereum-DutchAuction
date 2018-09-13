@@ -25,9 +25,9 @@ If you're a techie check out our Solidity contracts here:
 
 # WOM Documents
 You can read the current WOMToken light paper here:   [link](https://uploads-ssl.webflow.com/5a5741a320870d0001d8658d/5b8d58d0cbd0552b7c24eec2_WT-LPv5.3.pdf).    
-You can read the current WOMToken business deck here:  
+You can read the current WOMToken business deck here:
 [link](https://uploads-ssl.webflow.com/5a5741a320870d0001d8658d/5b992b71a66a8aef380cca82_WT-Bv3.2.5%20small.pdf).  
-You can read the current WOMToken whitepaper here:  
+You can read the current WOMToken whitepaper here:
 [link](https://uploads-ssl.webflow.com/5a5741a320870d0001d8658d/5b87b38f0c235c7fd9e22350_WT-WPv0.9%20small.pdf).  
 
 # Contact and Additional Information
