@@ -1,6 +1,6 @@
 # WOMDaPP
 [![CircleCI](https://circleci.com/gh/wom-token/WOMDaPP.svg?style=svg&circle-token=c38b17628e4a4258932e87e77212758f1b60b179)](https://circleci.com/gh/wom-token/WOMDaPP)
-:gem: The WOM Decentralized Platform™ - The most powerful and effective form of marketing through world of mouth.
+:gem: The WOM Decentralized Platform™ - The most powerful and effective form of marketing through word of mouth.
 
 *NOTE: The current alpha of WOM requires the latest [ganache-cli@v6.1.6](https://github.com/trufflesuite/ganache-cli), [truffle@v4.1.8](https://github.com/trufflesuite/truffle), and [NodeJS@8.10.0](https://nodejs.org/en/download/package-manager/) or greater to run locally.
 
