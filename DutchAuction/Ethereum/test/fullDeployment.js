@@ -11,8 +11,8 @@ contract('Full Deployment Test', function(accounts) {
 	const OWNER = accounts[2];
 	const PARTICIPANT = accounts[5];
 
-	const TOKEN_SUPPLY = 1000000000;
-	const AUCTION_CAP = 350000000;
+	const TOKEN_SUPPLY = 1000000000000000000000000000;
+	const AUCTION_CAP = 350000000000000000000000000;
 	const TOKEN_NAME = 'WOMToken';
 	const TOKEN_SYMBOL = 'WOM';
 	const DECIMAL_UNITS = 18;

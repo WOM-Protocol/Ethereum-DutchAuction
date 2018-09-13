@@ -125,7 +125,6 @@ contract SecondPriceAuction {
 		buyins[msg.sender].received += uint128(msg.value);
 		totalAccounted += accounted;
 		totalReceived += msg.value;
-		endTime = calculateEndTime();
 		emit Buyin(msg.sender, accounted, msg.value, price);
 	}
 
@@ -144,7 +143,6 @@ contract SecondPriceAuction {
 		buyins[_who].presale = true;
 		totalAccounted += accounted;
 		totalReceived += _received;
-		endTime = calculateEndTime();
 		emit Injected(_who, accounted, _received);
 	}
 
@@ -157,7 +155,6 @@ contract SecondPriceAuction {
 		totalAccounted -= buyins[_who].accounted;
 		totalReceived -= buyins[_who].received;
 		delete buyins[_who];
-		endTime = calculateEndTime();
 		emit Uninjected(_who);
 	}
 
@@ -258,17 +255,26 @@ contract SecondPriceAuction {
 	 * Here's the curve: https://www.desmos.com/calculator/k6iprxzcrg?embed
 	 */
 
-	/// The current end time of the sale assuming that nobody else buys in.
-	function calculateEndTime() public constant returns (uint) {
-		uint factor = tokenCap / DIVISOR * USDWEI;
-		return beginTime + 40000000 * factor / (totalAccounted + 5 * factor) - 5760;
-	}
+	/// y = [33200 / (x + 80) - 65] / 350
+	/// Where x is the number of hours passed since the beginning of the auction.
+	/*
+	Where x is the number of hours passed since the beginning of the auction.
+		Per this formula, the token price after the first day is approximately $0.72 priced in ETH,
+		after the first week is approximately $0.20 priced in ETH, etc.
+	*/
 
 	/// The current price for a single indivisible part of a token. If a buyin happens now, this is
 	/// the highest price per indivisible token part that the buyer will pay. This doesn't
 	/// include the discount which may be available.
-	function currentPrice() public constant when_active returns (uint weiPerIndivisibleTokenPart) {
-		return (USDWEI * 40000000 / (now - beginTime + 5760) - USDWEI * 5) / DIVISOR;
+	function currentPrice() public constant when_active returns (uint) {
+		return (USDWEI * 33200 / (now - beginTime + 80) - USDWEI * 65) / 350;
+//		return (USDWEI * 33200 / (now - beginTime + 80) - USDWEI * 65);
+
+//		return (((33200 / (now - beginTime + 80) - 65) * USDWEI) / 350);
+	}
+
+	function currentTime() public constant returns (uint) {
+		return now;
 	}
 
 	/// Returns the total indivisible token parts available for purchase right now.
@@ -471,7 +477,8 @@ contract SecondPriceAuction {
 	/// parity.api.util.sha3(parity.api.util.asciiToHex("\x19Ethereum Signed Message:\n" + tscs.length + tscs))
 	/// where `toUTF8 = x => unescape(encodeURIComponent(x))`
 	/// and `tscs` is the toUTF8 called on the contents of https://gist.githubusercontent.com/gavofyork/5a530cad3b19c1cafe9148f608d729d2/raw/a116b507fd6d96036037f3affd393994b307c09a/gistfile1.txt
-	bytes32 constant public STATEMENT_HASH = 0x2cedb9c5443254bae6c4f44a31abcb33ec27a0bd03eb58e22e38cdb8b366876d;
+	// bytes32 constant public STATEMENT_HASH = 0x2cedb9c5443254bae6c4f44a31abcb33ec27a0bd03eb58e22e38cdb8b366876d;
+	bytes32 constant public STATEMENT_HASH = 0x45f373debb8d5a53c7df499f79affafa8497c0a91018f7f82fbb3666c8c5563f;
 
 	/// Minimum duration after sale begins that bonus is active.
 	uint constant public BONUS_MIN_DURATION = 1 hours;
@@ -486,11 +493,11 @@ contract SecondPriceAuction {
 	uint constant public BONUS_LATCH = 2;
 
 	/// Number of Wei in one USD, constant.
-	uint constant public USDWEI = 3600 szabo;
+	uint constant public USDWEI = 5551 szabo;
 
 	/// Soft cap 10m USD in wei.
 	uint constant public USDWEI_SOFT_CAP = 35970 ether;
 
 	/// Divisor of the token.
-	uint constant public DIVISOR = 1000;
+	uint constant public DIVISOR = 100000000000000000;
 }
