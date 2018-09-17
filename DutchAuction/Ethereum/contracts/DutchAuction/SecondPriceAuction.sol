@@ -267,10 +267,12 @@ contract SecondPriceAuction {
 	/// the highest price per indivisible token part that the buyer will pay. This doesn't
 	/// include the discount which may be available.
 	function currentPrice() public constant when_active returns (uint) {
-		return (USDWEI * 33200 / (now - beginTime + 80) - USDWEI * 65) / 350;
-//		return (USDWEI * 33200 / (now - beginTime + 80) - USDWEI * 65);
+		require(hoursPassed() != 0);
+		return (USDWEI * 33600 / ( hoursPassed() + 80) - USDWEI * 65) / 350;
+	}
 
-//		return (((33200 / (now - beginTime + 80) - 65) * USDWEI) / 350);
+	function hoursPassed() public constant returns (uint) {
+		return (now - beginTime) / 1 hours;
 	}
 
 	function currentTime() public constant returns (uint) {
@@ -493,7 +495,7 @@ contract SecondPriceAuction {
 	uint constant public BONUS_LATCH = 2;
 
 	/// Number of Wei in one USD, constant.
-	uint constant public USDWEI = 5551 szabo;
+	uint constant public USDWEI = 4534 szabo;
 
 	/// Soft cap 10m USD in wei.
 	uint constant public USDWEI_SOFT_CAP = 35970 ether;
