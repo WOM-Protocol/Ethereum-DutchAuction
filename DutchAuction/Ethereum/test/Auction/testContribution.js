@@ -1,11 +1,9 @@
+var util = require("ethereumjs-util");
+
 const SecondPriceAuction = artifacts.require('./SecondPriceAuction.sol');
 const MultiCertifier = artifacts.require('./MultiCertifier.sol');
-const CertifierHandler = artifacts.require('./CertifierHandler.sol');
 const ERC20BurnableAndMintable = artifacts.require('./ERC20BurnableAndMintable.sol');
 const TokenVesting = artifacts.require('./TokenVesting.sol');
-
-const AssertRevert = require('../helpers/AssertRevert.js');
-const AssertJump = require('../helpers/AssertJump.js');
 
 const increaseTime = addSeconds => {
 	web3.currentProvider.send({jsonrpc: "2.0", method: "evm_increaseTime", params: [addSeconds], id: 0});
@@ -65,43 +63,15 @@ contract('test - auction', function(accounts) {
 	});
 
   it('Admin inject', async () => {
-    /* --- only_admin --- */
-    await auctionInstance.inject(PARTICIPANT, 100, 15, {from:PARTICIPANT}).catch(function(err){
-      assert.include(err.message,'VM Exception');
-    });
 
-    await auctionInstance.inject(PARTICIPANT, 100, 15, {from:ADMIN});
-    assert.equal(100, await auctionInstance.totalReceived(), 'Total recieved updated');
-    assert.equal(115, await auctionInstance.totalAccounted(), 'Total accounted updated');
-    let buyinsUser = await auctionInstance.buyins(PARTICIPANT);
-    assert.equal(115, buyinsUser[0], 'participant accounted updated');
-    assert.equal(100, buyinsUser[1], 'participant accounted updated');
-    assert.equal(true, buyinsUser[2], 'participant accounted updated');
   });
 
   it('Admin uninject', async () => {
-    /* --- only_admin --- */
-    await auctionInstance.uninject(PARTICIPANT, {from:PARTICIPANT}).catch(function(err){
-      assert.include(err.message,'VM Exception');
-    });
 
-    await auctionInstance.uninject(PARTICIPANT,{from:ADMIN});
-    assert.equal(0, await auctionInstance.totalReceived(), 'Total recieved updated');
-    assert.equal(0, await auctionInstance.totalAccounted(), 'Total accounted updated');
-    let buyinsUser = await auctionInstance.buyins(PARTICIPANT);
-    assert.equal(0, buyinsUser[0], 'participant account deleted');
-    assert.equal(0, buyinsUser[1], 'participant account deleted');
-    assert.equal(false, buyinsUser[2], 'participant account deleted');
   });
 
 
   it('Admin set halted', async () => {
-    /* --- only_admin --- */
-    await auctionInstance.setHalted(true, {from:PARTICIPANT}).catch(function(err){
-      assert.include(err.message, 'VM Exception');
-    });
 
-    await auctionInstance.setHalted(true, {from:ADMIN});
-    assert.equal(true, await auctionInstance.halted(), 'halted set');
   });
 });

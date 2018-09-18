@@ -1,8 +1,7 @@
 const MultiCertifier = artifacts.require('./MultiCertifier.sol');
 const CertifierHandler = artifacts.require('./CertifierHandler.sol');
 
-const AssertRevert = require('../helpers/AssertRevert.js');
-const AssertJump = require('../helpers/AssertJump.js');
+const AssertRevert = require('../../helpers/AssertRevert.js');
 
 contract('test - CertifierHandler', function(accounts) {
   const OWNER = accounts[0];

@@ -1,8 +1,7 @@
 const ERC20BurnableAndMintable = artifacts.require('./ERC20BurnableAndMintable.sol');
 const ERC20Interface = artifacts.require('./ERC20Interface.sol');
 
-const AssertRevert = require('../helpers/AssertRevert.js');
-const AssertJump = require('../helpers/AssertJump.js');
+const AssertRevert = require('../../helpers/AssertRevert.js');
 
 contract('ERC20BurnableAndMintable.sol - TestERC20', async (accounts) => {
   const erc20Creator = web3.eth.accounts[0];

@@ -2,8 +2,7 @@ const MultiCertifier = artifacts.require('./MultiCertifier.sol');
 const CertifierHandler = artifacts.require('./CertifierHandler.sol');
 const ERC20BurnableAndMintable = artifacts.require('./ERC20BurnableAndMintable.sol');
 
-const AssertRevert = require('../helpers/AssertRevert.js');
-const AssertJump = require('../helpers/AssertJump.js');
+const AssertRevert = require('../../helpers/AssertRevert.js');
 
 contract('MultiCertifier.sol', function(accounts) {
   const OWNER = accounts[0];
