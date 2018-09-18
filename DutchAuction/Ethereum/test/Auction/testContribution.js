@@ -30,7 +30,14 @@ contract('test - auction', function(accounts) {
   const END_TIME = BEGIN_TIME + (15 * DAY_EPOCH);
 
 	const USDWEI = 4534000000000000; // In WEI at time of testing 17/09/18
+	const TLCS = 'This is an example terms and conditions.';
+	const STATEMENT_HASH = web3.sha3("\x19Ethereum Signed Message:\n" + TLCS.length + TLCS);
 
+	let signature;
+	let r;
+	let s;
+	let v;
+	let vDecimal;
 
 	let certifierHandlerInstance;
 	let multiCertifierInstance;
@@ -62,7 +69,17 @@ contract('test - auction', function(accounts) {
 			AUCTION_CAP);
 	});
 
-  it('Admin inject', async () => {
+  it('Sign statement hash', async () => {
+		signature = web3.eth.sign(PARTICIPANT, STATEMENT_HASH,{from:PARTICIPANT});
+		r = '0x' + signature.slice(0, 64);
+		s = '0x' + signature.slice(64, 128);
+		v = '0x' + signature.slice(128, 130);
+
+		console.log(PARTICIPANT);
+		console.log(signature);
+		console.log('r ', r);
+		console.log('s ', s);
+		console.log('v ', v);
 
   });
 

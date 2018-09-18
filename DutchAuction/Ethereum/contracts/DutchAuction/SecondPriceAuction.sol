@@ -467,11 +467,9 @@ contract SecondPriceAuction {
 	/// The hash of the statement which must be signed in order to buyin.
 	/// The meaning of this hash is:
 	///
-	/// parity.api.util.sha3(parity.api.util.asciiToHex("\x19Ethereum Signed Message:\n" + tscs.length + tscs))
-	/// where `toUTF8 = x => unescape(encodeURIComponent(x))`
-	/// and `tscs` is the toUTF8 called on the contents of https://gist.githubusercontent.com/gavofyork/5a530cad3b19c1cafe9148f608d729d2/raw/a116b507fd6d96036037f3affd393994b307c09a/gistfile1.txt
-	// bytes32 constant public STATEMENT_HASH = 0x2cedb9c5443254bae6c4f44a31abcb33ec27a0bd03eb58e22e38cdb8b366876d;
-	bytes32 constant public STATEMENT_HASH = 0x45f373debb8d5a53c7df499f79affafa8497c0a91018f7f82fbb3666c8c5563f;
+	// STATEMENT_HASH = web3.sha3("\x19Ethereum Signed Message:\n" + TLCS.length + TLCS);
+	// TLCS = 'This is an example terms and conditions.';
+	bytes32 constant public STATEMENT_HASH = 0x39dc824726abf53792ed91f44d8aa16ceac9ebad41b62b64a30f218d2fd6d271;
 
 	/// Minimum duration after sale begins that bonus is active.
 	uint constant public BONUS_MIN_DURATION = 1 hours;
