@@ -89,7 +89,6 @@ contract SecondPriceAuction {
 		not_pre_sale_member(msg.sender)
 		only_eligible(msg.sender, v, r, s)
 	{
-		flushEra();
 
 		// Flush bonus period:
 		if (currentBonus > 0 && currentBonusRound <= 4) {
@@ -216,16 +215,6 @@ contract SecondPriceAuction {
 	}
 
 
-	// Prviate utilities:
-
-	/// Ensure the era tracker is prepared in case the current changed.
-	function flushEra() private {
-		uint currentEra = (now - beginTime) / ERA_PERIOD;
-		if (currentEra > eraIndex) {
-			emit Ticked(eraIndex, totalReceived, totalAccounted);
-		}
-		eraIndex = currentEra;
-	}
 
 	// Admin interaction:
 
@@ -267,7 +256,9 @@ contract SecondPriceAuction {
 	/// the highest price per indivisible token part that the buyer will pay. This doesn't
 	/// include the discount which may be available.
 	function currentPrice() public constant when_active returns (uint) {
-		require(hoursPassed() != 0);
+		if(hoursPassed() == 0){
+			return USDWEI;
+		}
 		return (USDWEI * 33600 / ( hoursPassed() + 80) - USDWEI * 65) / 350;
 	}
 
