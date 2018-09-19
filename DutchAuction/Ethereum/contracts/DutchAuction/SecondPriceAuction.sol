@@ -335,6 +335,16 @@ contract SecondPriceAuction {
 	/// True is ether recieved greater than softcap.
 	function softCapMet() public constant returns (bool) { return totalReceived >= USDWEI_SOFT_CAP; }
 
+	/// Recover address from signature
+	function recoverAddr(bytes32 msgHash, uint8 v, bytes32 r, bytes32 s) public constant returns (address) {
+			return ecrecover(msgHash, v, r, s);
+	}
+
+	/// Check if signature has been signed by passed in address
+	function isSigned(address _addr, bytes32 msgHash, uint8 v, bytes32 r, bytes32 s) public pure returns (bool) {
+			return ecrecover(msgHash, v, r, s) == _addr;
+	}
+
 	/// Returns true if the sender of this transaction is a basic account.
 	function isBasicAccount(address _who) internal constant returns (bool) {
 		uint senderCodeSize;
