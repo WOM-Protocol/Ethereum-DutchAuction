@@ -1,0 +1,20 @@
+{
+  "name": "package101",
+  "version": "0.0.1",
+  "description": "Package for dependencies",
+  "main": "truffle-config.js",
+  "directories": {
+    "test": "test"
+  },
+  "dependencies": {
+    "ethereumjs-util": "^5.2.0",
+    "solc": "^0.4.25",
+    "truffle": "^4.1.14"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "mocha"
+  },
+  "author": "",
+  "license": "ISC"
+}
