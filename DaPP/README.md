@@ -131,3 +131,5 @@ OracleManager.sol is where the users will initiate, and pay for an [Oraclize](ht
 
 * Now we need to ensure only the specified contract that have been added into the contractmanager will remain the only contracts able to edit bytes32 keys and their associated value.  So we must call the contractmanager and state that deployment has finished.
 > ContractManager.setDeployFinished();
+
+GPG test
