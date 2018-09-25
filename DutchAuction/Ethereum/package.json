@@ -7,6 +7,8 @@
     "test": "test"
   },
   "dependencies": {
+    "chai": "^4.1.2",
+    "chai-bignumber": "^2.0.2",
     "ethereumjs-util": "^5.2.0",
     "sha3": "^1.2.2",
     "solc": "^0.4.25",
