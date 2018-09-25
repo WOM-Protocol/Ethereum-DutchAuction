@@ -8,7 +8,9 @@
   },
   "dependencies": {
     "ethereumjs-util": "^5.2.0",
+    "sha3": "^1.2.2",
     "solc": "^0.4.25",
+    "solidity-coverage": "^0.5.11",
     "truffle": "^4.1.14"
   },
   "devDependencies": {},
