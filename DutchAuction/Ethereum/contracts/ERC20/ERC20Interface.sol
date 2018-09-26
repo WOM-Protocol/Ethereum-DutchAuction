@@ -10,8 +10,9 @@ contract ERC20Interface {
     function transfer(address to, uint tokens) public returns (bool success);
     function approve(address spender, uint tokens) public returns (bool success);
     function transferFrom(address from, address to, uint tokens) public returns (bool success);
+    function approveAndCall(address _spender, uint _amount, bytes _data) public returns (bool success);
 
     event Transfer(address indexed from, address indexed to, uint tokens);
     event Approval(address indexed tokenOwner, address indexed spender, uint tokens);
-     event Mint(address indexed to, uint amount);
+    event Mint(address indexed to, uint amount);
 }

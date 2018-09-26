@@ -2,17 +2,25 @@ pragma solidity 0.4.24;
 
 import '../Libraries/SafeMath.sol';
 import '../Libraries/Ownable.sol';
-import '../ERC20/ERC20BurnableAndMintable.sol';
-import './SecondPriceAuction.sol';
 
-contract TokenVesting is Ownable{
+/// Stripped down ERC20 standard token interface.
+contract Token {
+	function transfer(address _to, uint256 _value) public returns (bool success);
+	function approveAndCall(address _spender, uint _amount, bytes _data) public returns (bool success);
+}
+
+contract ApproveAndCallFallBack {
+  function receiveApproval(address from, uint tokens, address token, bytes data) public;
+}
+
+contract TokenVesting is Ownable {
     using SafeMath for *;
 
     mapping (address => Account) public users;
 
     address public tokenAddress;
 
-    ERC20BurnableAndMintable public tokenInstance;
+    Token public tokenContract;
 
     struct Account {
       uint256 start;
@@ -33,7 +41,7 @@ contract TokenVesting is Ownable{
     notEmptyAddress(_tokenWOM)
     {
       tokenAddress = _tokenWOM;
-      tokenInstance = ERC20BurnableAndMintable(_tokenWOM);
+      tokenContract = Token(_tokenWOM);
     }
 
     /*
@@ -104,7 +112,7 @@ contract TokenVesting is Ownable{
       }
       else if (now >= start.add(cliff.add(duration))) {
         users[msg.sender].released += currentBalance;
-        tokenInstance.transfer(msg.sender, currentBalance);
+        tokenContract.transfer(msg.sender, currentBalance);
         delete users[msg.sender];
         return currentBalance;
       }
@@ -114,14 +122,14 @@ contract TokenVesting is Ownable{
           if(now >= timeWithCliff.add(monthCount.mul(4 weeks))){
             users[msg.sender].released += paymentPerMonth;
             users[msg.sender].monthCount += 1;
-            tokenInstance.transfer(msg.sender, paymentPerMonth);
+            tokenContract.transfer(msg.sender, paymentPerMonth);
             return users[msg.sender].paymentPerMonth;
           }
         }
         else{
           users[msg.sender].released += users[msg.sender].cliffReleaseAmount;
           users[msg.sender].cliffReleased = true;
-          tokenInstance.transfer(msg.sender, users[msg.sender].cliffReleaseAmount);
+          tokenContract.transfer(msg.sender, users[msg.sender].cliffReleaseAmount);
           delete users[msg.sender].cliffReleaseAmount;
           return 0; // Return % of the cliff
         }

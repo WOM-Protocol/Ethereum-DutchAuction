@@ -1,5 +1,4 @@
 const ERC20BurnableAndMintable = artifacts.require('./ERC20BurnableAndMintable.sol');
-const ERC20Interface = artifacts.require('./ERC20Interface.sol');
 
 const AssertRevert = require('../../helpers/AssertRevert.js');
 
@@ -11,7 +10,6 @@ contract('ERC20BurnableAndMintable.sol - TestERC20', async (accounts) => {
   const emptyAddress = '0x0000000000000000000000000000000000000000';
 
   let erc20Instance;
-  let erc20InterfaceInstance;
 
   const initialAmount = 1000;
   const tokenName = 'WOMToken';

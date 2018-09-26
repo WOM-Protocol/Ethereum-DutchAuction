@@ -49,7 +49,6 @@ contract('Full Deployment Test', function(accounts) {
   it('Deploy Token Vesting', async () => {
 		tokenVestingInstance = await TokenVesting.new(erc20Instance.address);
 		assert.equal(await tokenVestingInstance.tokenAddress(), erc20Instance.address, 'ERC20 token address assigned');
-		assert.equal(await tokenVestingInstance.tokenInstance(), erc20Instance.address, 'Token instance assigned');
 	});
 
 	it('Deply SecondPriceAuction', async () => {
