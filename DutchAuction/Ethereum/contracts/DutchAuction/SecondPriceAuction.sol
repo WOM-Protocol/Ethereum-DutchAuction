@@ -337,12 +337,16 @@ contract SecondPriceAuction {
 
 	/// Recover address from signature
 	function recoverAddr(bytes32 msgHash, uint8 v, bytes32 r, bytes32 s) public constant returns (address) {
-			return ecrecover(msgHash, v, r, s);
+			bytes memory prefix = "\x19Ethereum Signed Message:\n32";
+			bytes32 prefixedHash = keccak256(prefix, msgHash);
+			return ecrecover(prefixedHash, v, r, s);
 	}
 
 	/// Check if signature has been signed by passed in address
 	function isSigned(address _addr, bytes32 msgHash, uint8 v, bytes32 r, bytes32 s) public pure returns (bool) {
-			return ecrecover(msgHash, v, r, s) == _addr;
+			bytes memory prefix = "\x19Ethereum Signed Message:\n32";
+			bytes32 prefixedHash = keccak256(prefix, msgHash);
+			return ecrecover(prefixedHash, v, r, s) == _addr;
 	}
 
 	/// Returns true if the sender of this transaction is a basic account.
@@ -479,7 +483,7 @@ contract SecondPriceAuction {
 	///
 	// STATEMENT_HASH = web3.sha3("\x19Ethereum Signed Message:\n" + TLCS.length + TLCS);
 	// TLCS = 'This is an example terms and conditions.';
-	bytes32 constant public STATEMENT_HASH = 0x39dc824726abf53792ed91f44d8aa16ceac9ebad41b62b64a30f218d2fd6d271;
+	bytes32 constant public STATEMENT_HASH = 0xc57ee7b218b0b593734b3cceda2c359b56e0daecaa87645efff6b084a78ff57;
 
 	/// Minimum duration after sale begins that bonus is active.
 	uint constant public BONUS_MIN_DURATION = 1 hours;
