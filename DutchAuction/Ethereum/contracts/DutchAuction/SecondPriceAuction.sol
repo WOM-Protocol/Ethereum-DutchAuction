@@ -85,17 +85,15 @@ contract SecondPriceAuction {
 		public
 		payable
 		when_not_halted
-		when_active
 		not_pre_sale_member(msg.sender)
+		when_active
 		only_eligible(msg.sender, v, r, s)
 	{
 
 		// Flush bonus period:
 		if (currentBonus > 0 && currentBonusRound <= 4) {
 			// Bonus is currently active...
-			if (now >= beginTime + BONUS_MIN_DURATION				// ...but outside the automatic bonus period
-				&& lastNewInterest + BONUS_LATCH <= block.number	// ...and had no new interest for some blocks
-			) {
+			if (now >= beginTime + BONUS_MIN_DURATION){
 				currentBonus -= 5;
 				currentBonusRound++;
 			}
@@ -266,10 +264,6 @@ contract SecondPriceAuction {
 		return (now - beginTime) / 1 hours;
 	}
 
-	function currentTime() public constant returns (uint) {
-		return now;
-	}
-
 	/// Returns the total indivisible token parts available for purchase right now.
 	function tokensAvailable() public constant when_active returns (uint tokens) {
 		uint _currentCap = totalAccounted / currentPrice();
@@ -392,12 +386,20 @@ contract SecondPriceAuction {
 	/// the gas price is sufficiently low and the value is sufficiently high.
 	modifier only_eligible(address who, uint8 v, bytes32 r, bytes32 s) {
 		require (
-			ecrecover(STATEMENT_HASH, v, r, s) == who &&
+			recoverAddr(STATEMENT_HASH, v, r, s) == who &&
 			certifier.certified(who) &&
 			isBasicAccount(who) &&
 			msg.value >= DUST_LIMIT
 		);
 		_;
+	}
+
+	function eligibleCall(address who, uint8 v, bytes32 r, bytes32 s) public view returns(bool) {
+		require (recoverAddr(STATEMENT_HASH, v, r, s) == who &&
+			certifier.certified(who) &&
+			isBasicAccount(who)
+		);
+		return true;
 	}
 
 	/// Ensure sender is not a contract.
@@ -483,7 +485,7 @@ contract SecondPriceAuction {
 	///
 	// STATEMENT_HASH = web3.sha3("\x19Ethereum Signed Message:\n" + TLCS.length + TLCS);
 	// TLCS = 'This is an example terms and conditions.';
-	bytes32 constant public STATEMENT_HASH = 0xc57ee7b218b0b593734b3cceda2c359b56e0daecaa87645efff6b084a78ff57;
+	bytes32 constant public STATEMENT_HASH = 0x296ee19d9322038f648ced3996d1909faa1eaf9fd6d1340f49180822eb0f8776;
 
 	/// Minimum duration after sale begins that bonus is active.
 	uint constant public BONUS_MIN_DURATION = 1 hours;
@@ -498,7 +500,7 @@ contract SecondPriceAuction {
 	uint constant public BONUS_LATCH = 2;
 
 	/// Number of Wei in one USD, constant.
-	uint constant public USDWEI = 4534 szabo;
+	uint constant public USDWEI = 4685 szabo;
 
 	/// Soft cap 10m USD in wei.
 	uint constant public USDWEI_SOFT_CAP = 35970 ether;

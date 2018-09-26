@@ -30,7 +30,7 @@ contract('test - auction', function(accounts) {
   const BEGIN_TIME = web3.eth.getBlock(web3.eth.blockNumber).timestamp + 1000;
   const END_TIME = BEGIN_TIME + (15 * DAY_EPOCH);
 
-	const USDWEI = 4534000000000000; // In WEI at time of testing 17/09/18
+	const USDWEI = 4685000000000000; // In WEI at time of testing 26/09/18
 
 
 	let certifierHandlerInstance;
@@ -109,7 +109,6 @@ contract('test - auction', function(accounts) {
 		increaseTime(END_TIME);
 		assert.equal(false, await auctionInstance.isActive(), 'Auction ended');
 		assert.equal(true, await auctionInstance.allFinalised(), 'All finalized');
-
 	});
 
 });

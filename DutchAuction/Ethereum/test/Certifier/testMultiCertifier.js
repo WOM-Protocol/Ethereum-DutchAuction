@@ -1,6 +1,4 @@
 const MultiCertifier = artifacts.require('./MultiCertifier.sol');
-const CertifierHandler = artifacts.require('./CertifierHandler.sol');
-const ERC20BurnableAndMintable = artifacts.require('./ERC20BurnableAndMintable.sol');
 
 const AssertRevert = require('../../helpers/AssertRevert.js');
 
@@ -18,12 +16,6 @@ contract('MultiCertifier.sol', function(accounts) {
 	const DECIMAL_UNITS = 18;
 
 	let multiCertifierInstance;
-	let erc20Instance;
-
-	it('Deploy Token', async () => {
-		erc20Instance = await ERC20BurnableAndMintable.new(
-			TOKEN_SUPPLY, TOKEN_NAME, 18, TOKEN_SYMBOL);
-	});
 
 	it('Deply MultiCertifier', async () => {
 		multiCertifierInstance = await MultiCertifier.new();
