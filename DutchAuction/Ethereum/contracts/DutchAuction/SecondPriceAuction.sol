@@ -90,17 +90,13 @@ contract SecondPriceAuction {
 		only_eligible(msg.sender, v, r, s)
 	{
 
-		// Flush bonus period:
 		if (currentBonus > 0 && currentBonusRound <= 4) {
 			// Bonus is currently active...
-			if (now >= beginTime + BONUS_MIN_DURATION){
-				currentBonus -= 5;
-				currentBonusRound++;
-			}
 			if (now >= beginTime + BONUS_MAX_DURATION) {
 				currentBonus = 0;
+				currentBonusRound++;
 			}
-			if (now >= beginTime + (BONUS_MAX_DURATION_ROUND*currentBonusRound)) {
+			else if (now >= beginTime + (BONUS_MAX_DURATION_ROUND*currentBonusRound)) {
 				currentBonus -= 5;
 				currentBonusRound++;
 			}
@@ -163,22 +159,21 @@ contract SecondPriceAuction {
 		when_soft_met
 		only_buyins(_who)
 	{
-		// end the auction if we're the first one to finalise.
+
 		if (endPrice == 0) {
-			endPrice = totalAccounted / tokenCap;
+			endPrice = (totalAccounted*DIVISOR / tokenCap*DIVISOR);
 			emit Ended(endPrice);
 		}
 
-		// enact the purchase.
 		uint total = buyins[_who].accounted;
-		uint tokens = total / endPrice;
+		uint tokens = ((total*DIVISOR) / endPrice) * DIVISOR;
 		totalFinalised += total;
 		bool presale = buyins[_who].presale;
 
-		delete buyins[_who];
+	 delete buyins[_who];
 
 		if(presale){
-			require (tokenContract.approveAndCall(tokenVesting, total, toBytes(_who)));
+			require (tokenContract.approveAndCall(tokenVesting, tokens, toBytes(_who)));
 		}
 		else{
 			require (tokenContract.transfer(_who, tokens));
@@ -186,7 +181,7 @@ contract SecondPriceAuction {
 
 		emit Finalised(_who, tokens);
 
-		if (totalFinalised == totalAccounted) {
+		if (totalFinalised == totalAccounted*DIVISOR) {
 			emit Retired();
 		}
 	}
@@ -257,7 +252,7 @@ contract SecondPriceAuction {
 		if(hoursPassed() == 0){
 			return USDWEI;
 		}
-		return (USDWEI * 33600 / ( hoursPassed() + 80) - USDWEI * 65) / 350;
+		return (USDWEI * 33200 / ( hoursPassed() + 80) - USDWEI * 65) / 350;
 	}
 
 	function hoursPassed() public constant returns (uint) {
@@ -319,6 +314,8 @@ contract SecondPriceAuction {
 		        b := m
 		   }
 		}
+
+	function currentTime() public constant returns (uint) { return now;}
 
 	/// True if the sale is ongoing.
 	function isActive() public constant returns (bool) { return now >= beginTime && now < endTime; }
@@ -472,9 +469,6 @@ contract SecondPriceAuction {
 	/// The era for which the current consolidated data represents.
 	uint public eraIndex;
 
-	/// The size of the era in seconds.
-	uint constant public ERA_PERIOD = 5 minutes;
-
 	// Static constants:
 
 	/// Anything less than this is considered dust and cannot be used to buy in.
@@ -500,7 +494,7 @@ contract SecondPriceAuction {
 	uint constant public BONUS_LATCH = 2;
 
 	/// Number of Wei in one USD, constant.
-	uint constant public USDWEI = 4685 szabo;
+	uint constant public USDWEI = 4650 szabo;
 
 	/// Soft cap 10m USD in wei.
 	uint constant public USDWEI_SOFT_CAP = 35970 ether;

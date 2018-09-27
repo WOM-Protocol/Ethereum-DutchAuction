@@ -32,9 +32,16 @@ contract('test - auction', function(accounts) {
   const BEGIN_TIME = web3.eth.getBlock(web3.eth.blockNumber).timestamp + 1000;
   const END_TIME = BEGIN_TIME + (15 * DAY_EPOCH);
 
-	const USDWEI = 4685000000000000; // In WEI at time of testing 26/09/18
+	const USDWEI = 4650000000000000; // In WEI at time of testing 26/09/18
 	const TLCS = 'This is an example terms and conditions.';
 	const DUST = 4000000000000000;
+
+
+	const BONUS_20 = 1000000000000000000*1.2;
+	const BONUS_15 = 1000000000000000000*1.15;
+	const BONUS_10 = 1000000000000000000*1.1;
+	const BONUS_5 = 1000000000000000000*1.05;
+	const NO_BONUS = 1000000000000000000;
 
 
 	let hashedMessage;
@@ -130,11 +137,112 @@ contract('test - auction', function(accounts) {
 		let only_eligible_dust = auctionInstance.buyin(v, r, s, {from:PARTICIPANT, value: DUST});
 		AssertRevert.assertRevert(only_eligible_dust);
 
-		await auctionInstance.buyin(v, r, s, {from:PARTICIPANT, value: 1000000000000000000});
+		/* ---- 20% bonus ---- */
+		await auctionInstance.buyin(v, r, s, {from:PARTICIPANT, value: NO_BONUS});
 		buyins = await auctionInstance.buyins(PARTICIPANT);
-		assert.equal(Number(buyins[0]), 1000000000000000000*1.2, 'user buyins accounted upated');
-		assert.equal(Number(buyins[1]), 1000000000000000000, 'user buyins received upated');
-		assert.equal(Number(await auctionInstance.totalAccounted()),1000000000000000000*1.2, 'total accounted updated');
-		assert.equal(Number(await auctionInstance.totalReceived()), 1000000000000000000, 'total receieved updated');
+		assert.equal(Number(buyins[0]), BONUS_20, 'user buyins accounted upated');
+		assert.equal(Number(buyins[1]), NO_BONUS, 'user buyins received upated');
+		assert.equal(Number(await auctionInstance.totalAccounted()), BONUS_20, 'total accounted updated');
+		assert.equal(Number(await auctionInstance.totalReceived()), NO_BONUS, 'total receieved updated');
 	});
+
+	it('Purchase bonuses', async () => {
+			/* ---- 15% bonus ---- */
+			increaseTime(DAY_EPOCH);
+			await auctionInstance.buyin(v, r, s, {from:PARTICIPANT, value: NO_BONUS});
+			assert.equal(Number(await auctionInstance.currentBonus()), 15);
+			assert.equal(Number(await auctionInstance.currentBonusRound()), 2, 'bonus round updated');
+			let buyins = await auctionInstance.buyins(PARTICIPANT);
+			assert.equal(Number(buyins[0]), BONUS_20+BONUS_15, 'user buyins accounted upated');
+			assert.equal(Number(buyins[1]), NO_BONUS*2, 'user buyins received upated');
+			assert.equal(Number(await auctionInstance.totalAccounted()), BONUS_20+BONUS_15, 'total accounted updated');
+			assert.equal(Number(await auctionInstance.totalReceived()), NO_BONUS*2, 'total receieved updated');
+
+			/* ---- 10% bonus ---- */
+			increaseTime(DAY_EPOCH);
+			await auctionInstance.buyin(v, r, s, {from:PARTICIPANT, value: NO_BONUS});
+			assert.equal(Number(await auctionInstance.currentBonus()), 10);
+			assert.equal(Number(await auctionInstance.currentBonusRound()), 3, 'bonus round updated');
+			buyins = await auctionInstance.buyins(PARTICIPANT);
+			assert.equal(Number(buyins[0]), BONUS_20+BONUS_15+BONUS_10, 'user buyins accounted upated');
+			assert.equal(Number(buyins[1]), NO_BONUS*3, 'user buyins received upated');
+			assert.equal(Number(await auctionInstance.totalAccounted()), BONUS_20+BONUS_15+BONUS_10, 'total accounted updated');
+			assert.equal(Number(await auctionInstance.totalReceived()), NO_BONUS*3, 'total receieved updated');
+
+			/* ---- 5% bonus ---- */
+			increaseTime(DAY_EPOCH);
+			await auctionInstance.buyin(v, r, s, {from:PARTICIPANT, value: NO_BONUS});
+			assert.equal(Number(await auctionInstance.currentBonus()), 5);
+			assert.equal(Number(await auctionInstance.currentBonusRound()), 4, 'bonus round updated');
+			buyins = await auctionInstance.buyins(PARTICIPANT);
+			assert.equal(Number(buyins[0]), BONUS_20+BONUS_15+BONUS_10+BONUS_5, 'user buyins accounted upated');
+			assert.equal(Number(buyins[1]), NO_BONUS*4, 'user buyins received upated');
+			assert.equal(Number(await auctionInstance.totalAccounted()), BONUS_20+BONUS_15+BONUS_10+BONUS_5, 'total accounted updated');
+			assert.equal(Number(await auctionInstance.totalReceived()), NO_BONUS*4, 'total receieved updated');
+
+			/* ---- 0% bonus ---- */
+			increaseTime(DAY_EPOCH);
+			await auctionInstance.buyin(v, r, s, {from:PARTICIPANT, value: NO_BONUS});
+			assert.equal(Number(await auctionInstance.currentBonus()), 0);
+			assert.equal(Number(await auctionInstance.currentBonusRound()), 5, 'bonus round updated');
+			buyins = await auctionInstance.buyins(PARTICIPANT);
+			assert.equal(Number(buyins[0]), BONUS_20+BONUS_15+BONUS_10+BONUS_5+NO_BONUS, 'user buyins accounted upated');
+			assert.equal(Number(buyins[1]), NO_BONUS*5, 'user buyins received upated');
+			assert.equal(Number(await auctionInstance.totalAccounted()), BONUS_20+BONUS_15+BONUS_10+BONUS_5+NO_BONUS, 'total accounted updated');
+			assert.equal(Number(await auctionInstance.totalReceived()), NO_BONUS*5, 'total receieved updated');
+
+				/* ---- require (!refund); ---- */
+						  // Fund over amount //
+				await auctionInstance.buyin(v, r, s, {from:PARTICIPANT, value: web3.toWei(1635284,'ether')}).catch(function(err){
+		      assert.include(err.message,'assert.fail');
+		    });
+	});
+
+	it('Meet softcap, then end auction', async () => {
+			await auctionInstance.buyin(v, r, s, {from:PARTICIPANT, value: web3.toWei(35970,'ether')});
+			assert.equal(await auctionInstance.softCapMet(), true);
+
+			increaseTime(END_TIME);
+			assert.equal(await auctionInstance.isActive(), false);
+			await erc20Instance.transfer(auctionInstance.address, AUCTION_CAP);
+			assert.equal(await erc20Instance.balanceOf(auctionInstance.address), AUCTION_CAP);
+	});
+
+	it('Finalize', async () => {
+		let buyin = await auctionInstance.buyins(PARTICIPANT);
+		console.log(buyin[0], buyin[1], Number(buyin[2]));
+
+		await auctionInstance.finalise(PARTICIPANT);
+		console.log('End price: ', Number(await auctionInstance.endPrice()));
+		console.log('totalAccounted, ', Number(await auctionInstance.totalAccounted()));
+		console.log('tokenCap, ', Number(await auctionInstance.tokenCap()));
+		//assert.equal(await erc20Instance.balanceOf(PARTICIPANT), AUCTION_CAP);
+		console.log('Total Finalized', Number(await auctionInstance.totalFinalised()));
+		console.log(Number(await erc20Instance.balanceOf(PARTICIPANT)));
+		console.log(Number(await erc20Instance.balanceOf(auctionInstance.address)));
+
+	});
+
+
+
+		/* ---- require (!refund); ---- */
+		//let tokensAvailable = Number(await auctionInstance.tokensAvailable());
+	//	console.log(tokensAvailable);
+		//await auctionInstance.buyin(v, r, s, {from:PARTICIPANT, value: web3.toWei(1635284,'ether')});
+		//console.log(PARTICIPANT);
+		//assert.equal(Number(await erc20Instance.balanceOf(auctionInstance.address)), AUCTION_CAP);
+
+
+	/*	await erc2
+
+		token = instance;
+		const OWNER = accounts[2];
+		token.transfer(auction.address, 5000000000, { from: OWNER });
+		token.makeLiquid(auction.address, { from: OWNER });
+		auction.finalise(CONTRIBUTOR);
+		return token.balanceOf.call(CONTRIBUTOR);
+	}).then(function(balance) {
+		assert.equal(balance.toNumber(), 5000000000, "All DOTs to one guy.");*/
+
+
 });
