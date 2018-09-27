@@ -12,7 +12,7 @@ const increaseTime = addSeconds => {
 	web3.currentProvider.send({jsonrpc: "2.0", method: "evm_mine", params: [], id: 1});
 }
 
-contract('test - auction', function(accounts) {
+contract('testContribution.js', function(accounts) {
   const OWNER = accounts[0];
 	const ADMIN = accounts[1];
   const TREASURY = accounts[2];
@@ -213,14 +213,8 @@ contract('test - auction', function(accounts) {
 		console.log(buyin[0], buyin[1], Number(buyin[2]));
 
 		await auctionInstance.finalise(PARTICIPANT);
-		console.log('End price: ', Number(await auctionInstance.endPrice()));
-		console.log('totalAccounted, ', Number(await auctionInstance.totalAccounted()));
-		console.log('tokenCap, ', Number(await auctionInstance.tokenCap()));
-		//assert.equal(await erc20Instance.balanceOf(PARTICIPANT), AUCTION_CAP);
-		console.log('Total Finalized', Number(await auctionInstance.totalFinalised()));
-		console.log(Number(await erc20Instance.balanceOf(PARTICIPANT)));
-		console.log(Number(await erc20Instance.balanceOf(auctionInstance.address)));
-
+		assert.equal(await erc20Instance.balanceOf(PARTICIPANT), AUCTION_CAP);
+		assert.equal(await erc20Instance.balanceOf(auctionInstance.address), 0);
 	});
 
 

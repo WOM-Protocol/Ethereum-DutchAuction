@@ -9,7 +9,7 @@ const increaseTime = addSeconds => {
 	web3.currentProvider.send({jsonrpc: "2.0", method: "evm_mine", params: [], id: 1});
 }
 
-contract('test - auction', function(accounts) {
+contract('testAuction.js', function(accounts) {
   const OWNER = accounts[0];
 	const ADMIN = accounts[1];
   const TREASURY = accounts[2];
@@ -30,7 +30,7 @@ contract('test - auction', function(accounts) {
   const BEGIN_TIME = web3.eth.getBlock(web3.eth.blockNumber).timestamp + 1000;
   const END_TIME = BEGIN_TIME + (15 * DAY_EPOCH);
 
-	const USDWEI = 4685000000000000; // In WEI at time of testing 26/09/18
+	const USDWEI = 4650000000000000; // In WEI at time of testing 26/09/18
 
 
 	let certifierHandlerInstance;
@@ -94,7 +94,7 @@ contract('test - auction', function(accounts) {
 		assert.equal(0, await auctionInstance.hoursPassed(), 'no hours passed');
 		assert.equal(false, await auctionInstance.softCapMet(), 'soft cap not met');
 		// assert.equal(web3.eth.getBlock(web3.eth.blockNumber).timestamp, parseInt(await auctionInstance.currentTime()), 'current time'); // Test sometimes fails with 1 second deviation
-		assert.equal(USDWEI, await auctionInstance.currentPrice(), 'Current price 1$');
+		assert.equal(USDWEI, Number(await auctionInstance.currentPrice()), 'Current price 1$');
 		assert.equal(AUCTION_CAP, await auctionInstance.tokensAvailable(), 'full tokens available');
 		assert.equal(AUCTION_CAP*USDWEI, await auctionInstance.maxPurchase(), 'all tokens available for purchase');
 		assert.equal(20, await auctionInstance.currentBonus(), 'Current bonus');

@@ -8,7 +8,7 @@ const increaseTime = addSeconds => {
 	web3.currentProvider.send({jsonrpc: "2.0", method: "evm_mine", params: [], id: 1});
 }
 
-contract('test - auction', function(accounts) {
+contract('testAdmin.js', function(accounts) {
   const OWNER = accounts[0];
 	const ADMIN = accounts[1];
   const TREASURY = accounts[2];
@@ -27,7 +27,10 @@ contract('test - auction', function(accounts) {
   const BEGIN_TIME = web3.eth.getBlock(web3.eth.blockNumber).timestamp + 1000;
   const END_TIME = BEGIN_TIME + (15 * DAY_EPOCH);
 
-	const USDWEI = 4534000000000000; // In WEI at time of testing 17/09/18
+	const USDWEI = 4650000000000000; // In WEI at time of testing 17/09/18
+
+	const NO_BONUS = 1000000000000000000;
+
 
 
 	let certifierHandlerInstance;
@@ -99,5 +102,35 @@ contract('test - auction', function(accounts) {
 
     await auctionInstance.setHalted(true, {from:ADMIN});
     assert.equal(true, await auctionInstance.halted(), 'halted set');
+		  await auctionInstance.setHalted(false, {from:ADMIN});
   });
+
+	it('Admin drain', async () => {
+		increaseTime(1000);
+			// Sign message //
+		const message = 'TLCS.'
+		hashedMessage = web3.sha3(message)
+		assert.equal(await auctionInstance.STATEMENT_HASH(), hashedMessage);
+		var sig = await web3.eth.sign(PARTICIPANT, hashedMessage).slice(2)
+		r = '0x' + sig.slice(0, 64)
+		s = '0x' + sig.slice(64, 128)
+		v = web3.toDecimal(sig.slice(128, 130)) + 27
+		assert.equal(await auctionInstance.isSigned(PARTICIPANT, hashedMessage, v, r, s), true);
+		assert.equal(await auctionInstance.recoverAddr(hashedMessage, v, r, s), PARTICIPANT);
+
+			// certify //
+		await multiCertifierInstance.certify(PARTICIPANT);
+
+			// -- Buyin -- //
+		await auctionInstance.buyin(v, r, s, {from:PARTICIPANT, value: NO_BONUS});
+		buyins = await auctionInstance.buyins(PARTICIPANT);
+		increaseTime(END_TIME);
+
+			// drain //
+		let balanceBefore = Number(web3.eth.getBalance(TREASURY));
+		assert.equal(await auctionInstance.isActive(), false);
+		await auctionInstance.drain({from:ADMIN});
+		assert.equal(web3.eth.getBalance(auctionInstance.address), 0);
+		assert.equal(Number(web3.eth.getBalance(TREASURY)),NO_BONUS+balanceBefore);
+	});
 });

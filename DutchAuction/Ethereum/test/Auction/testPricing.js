@@ -8,7 +8,7 @@ const increaseTime = addSeconds => {
 	web3.currentProvider.send({jsonrpc: "2.0", method: "evm_mine", params: [], id: 1});
 }
 
-contract('test - auction', function(accounts) {
+contract('testPricing.js', function(accounts) {
   const OWNER = accounts[0];
 	const ADMIN = accounts[1];
   const TREASURY = accounts[2];
@@ -27,7 +27,7 @@ contract('test - auction', function(accounts) {
   const BEGIN_TIME = web3.eth.getBlock(web3.eth.blockNumber).timestamp + 1000;
   const END_TIME = BEGIN_TIME + (15 * DAY_EPOCH);
 
-	const USDWEI = 4534000000000000; // In WEI at time of testing 17/09/18
+	const USDWEI = 4650000000000000;
 
 
 	let certifierHandlerInstance;
@@ -91,8 +91,8 @@ contract('test - auction', function(accounts) {
     console.log('Day 13 Price : ', Number(await auctionInstance.currentPrice()));
     increaseTime(DAY_EPOCH);
     console.log('Day 14 Price : ', Number(await auctionInstance.currentPrice()));
-    increaseTime(DAY_EPOCH-5);
-    console.log('Day 15 Price : ', Number(await auctionInstance.currentPrice()));
+    //increaseTime(DAY_EPOCH-5);
+    //console.log('Day 15 Price : ', Number(await auctionInstance.currentPrice()));
 
     console.log(Number(await auctionInstance.currentTime()));
     console.log(Number(await auctionInstance.endTime()));
