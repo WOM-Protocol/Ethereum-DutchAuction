@@ -136,8 +136,6 @@ contract TokenVesting is Ownable {
       }
     }
 
-
-
     function bytesToAddress(bytes bys)
     private
     pure
