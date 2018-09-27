@@ -137,6 +137,8 @@ contract('testContribution.js', function(accounts) {
 		let only_eligible_dust = auctionInstance.buyin(v, r, s, {from:PARTICIPANT, value: DUST});
 		AssertRevert.assertRevert(only_eligible_dust);
 
+		assert.equal(await auctionInstance.eligibleCall(PARTICIPANT, v, r, s), true);
+
 		/* ---- 20% bonus ---- */
 		await auctionInstance.buyin(v, r, s, {from:PARTICIPANT, value: NO_BONUS});
 		buyins = await auctionInstance.buyins(PARTICIPANT);
@@ -216,27 +218,4 @@ contract('testContribution.js', function(accounts) {
 		assert.equal(await erc20Instance.balanceOf(PARTICIPANT), AUCTION_CAP);
 		assert.equal(await erc20Instance.balanceOf(auctionInstance.address), 0);
 	});
-
-
-
-		/* ---- require (!refund); ---- */
-		//let tokensAvailable = Number(await auctionInstance.tokensAvailable());
-	//	console.log(tokensAvailable);
-		//await auctionInstance.buyin(v, r, s, {from:PARTICIPANT, value: web3.toWei(1635284,'ether')});
-		//console.log(PARTICIPANT);
-		//assert.equal(Number(await erc20Instance.balanceOf(auctionInstance.address)), AUCTION_CAP);
-
-
-	/*	await erc2
-
-		token = instance;
-		const OWNER = accounts[2];
-		token.transfer(auction.address, 5000000000, { from: OWNER });
-		token.makeLiquid(auction.address, { from: OWNER });
-		auction.finalise(CONTRIBUTOR);
-		return token.balanceOf.call(CONTRIBUTOR);
-	}).then(function(balance) {
-		assert.equal(balance.toNumber(), 5000000000, "All DOTs to one guy.");*/
-
-
 });
