@@ -163,7 +163,8 @@ contract SecondPriceAuction {
 		}
 
 		uint total = buyins[_who].accounted;
-		uint tokens = total / endPrice;
+		uint tokens = (total / endPrice) * DIVISOR;
+		tokenTest = tokens;
 		totalFinalised += total;
 		bool presale = buyins[_who].presale;
 
@@ -179,9 +180,11 @@ contract SecondPriceAuction {
 		emit Finalised(_who, tokens);
 
 		if (totalFinalised == totalAccounted) {
+			isFinalized = true;
 			emit Retired();
 		}
 	}
+	uint public tokenTest;
 
 
 	// Return ether to participant if softcap is not met.
@@ -460,9 +463,8 @@ contract SecondPriceAuction {
 	/// greater than this, the sale ends.
 	uint public tokenCap;
 
-	// Era stuff (isolated)
-	/// The era for which the current consolidated data represents.
-	uint public eraIndex;
+	// If finalized all transfers
+	bool public isFinalized;
 
 	// Static constants:
 

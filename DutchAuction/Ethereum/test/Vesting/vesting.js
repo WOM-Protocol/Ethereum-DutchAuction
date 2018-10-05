@@ -21,6 +21,7 @@ contract('vesting.js', function(accounts) {
   const TRAILING_DECIMALS = 000000000000000000;
 	const TOKEN_SUPPLY = 1000000000000000000000000000;
 	const AUCTION_CAP = 350000000000000000000000000;
+
 	const TOKEN_NAME = 'WOMToken';
 	const TOKEN_SYMBOL = 'WOM';
 	const DECIMAL_UNITS = 18;
@@ -31,6 +32,12 @@ contract('vesting.js', function(accounts) {
   const YEAR_EPOCH = DAY_EPOCH*365;
 
   const EMPTY_ADDRESS = '0x0000000000000000000000000000000000000000';
+
+	const PARTICIPANT_PURCHASE = web3.toWei(10,'ether');
+	const PARTICIPANT_PURCHASE_WITH_BONUS = Number(PARTICIPANT_PURCHASE * 1.2);
+
+	const PRESALE_PURCHASE = web3.toWei(45190,'ether');
+	const PRESALE_PURCHASE_WITH_BONUS = Number(PRESALE_PURCHASE * 1.15);
 
   let hashedMessage;
   let r;
@@ -84,7 +91,7 @@ contract('vesting.js', function(accounts) {
     /* ---- notRegistered ---- */
     let notRegistered = tokenVestingInstance.registerPresaleVest(PRESALE_PARTICIPANT, YEAR_EPOCH, YEAR_EPOCH+END_TIME, 2*YEAR_EPOCH);
     AssertRevert.assertRevert(notRegistered);
-    await auctionInstance.inject(PRESALE_PARTICIPANT, web3.toWei(45190,'ether'), 15, {from:ADMIN});
+    await auctionInstance.inject(PRESALE_PARTICIPANT, PRESALE_PURCHASE, 15, {from:ADMIN});
     console.log('total accounted: ', Number(await auctionInstance.totalAccounted()));
   //  console.log('eth to wei: ', Number(web3.toWei(35971,'ether')));
 
@@ -103,42 +110,41 @@ contract('vesting.js', function(accounts) {
     assert.equal(await auctionInstance.recoverAddr(hashedMessage, v, r, s), PARTICIPANT);
 
     await multiCertifierInstance.certify(PARTICIPANT);
-  	await auctionInstance.buyin(v, r, s, {from:PARTICIPANT, value: web3.toWei(10,'ether')});
+  	await auctionInstance.buyin(v, r, s, {from:PARTICIPANT, value: PARTICIPANT_PURCHASE});
 
   });
 
-  it('Set time ended & transfer funds to auction', async () => {
-    console.log('CurrentPrice: ',Number(await auctionInstance.currentPrice()));
-  	increaseTime(DAY_EPOCH);
-		console.log('CurrentPrice: ',Number(await auctionInstance.currentPrice()));
+  it('Set time ended', async () => {
 		increaseTime(END_TIME);
 		assert.equal(await auctionInstance.isActive(), false);
 		assert.equal(await auctionInstance.softCapMet(), true);
   });
 
   it('Finalize as the pre-sale participant', async () => {
-
-
-
-    //await auctionInstance.finalise(PARTICIPANT);
+		let presaleBuyins = await auctionInstance.buyins(PRESALE_PARTICIPANT);
+    await auctionInstance.finalise(PARTICIPANT);
     await auctionInstance.finalise(PRESALE_PARTICIPANT);
+		assert.equal(await auctionInstance.isFinalized(), true);
 
-    let endPrice = Number(await auctionInstance.endPrice());
-    console.log('endPrice: ', endPrice);
-    console.log('approval amount: ', parseFloat(await erc20Instance.allowance(auctionInstance.address, tokenVestingInstance.address)));
-    console.log('balance auction: ', Number(await erc20Instance.balanceOf(auctionInstance.address)));
-    console.log('balance participant: ', Number(await erc20Instance.balanceOf(PARTICIPANT)));
-    console.log('total finalized: ', Number(await auctionInstance.totalFinalised()));
-    console.log('auction cap: ', Number(await auctionInstance.tokenCap()));
-		//console.log('Finalized bool: ', await auctionInstance.finalizedBool());
+		let tokenCap = Number(await auctionInstance.tokenCap());
+		let perEach = Number(tokenCap / (PRESALE_PURCHASE_WITH_BONUS + PARTICIPANT_PURCHASE_WITH_BONUS));
+		let presaleAmount = Number(perEach * PRESALE_PURCHASE_WITH_BONUS);
+		let participantAmount = Number(perEach * PARTICIPANT_PURCHASE_WITH_BONUS);
 
+		let participantBalance = Number(await erc20Instance.balanceOf(PARTICIPANT));
+		let presaleBalance = Number(await erc20Instance.allowance(auctionInstance.address, tokenVestingInstance.address));
 
-    //assert.equal(Number(await auctionInstance.totalFinalised()), AUCTION_CAP);
+		console.log('totalAccounted: ', tokenCap);
+		console.log('perEach: ', perEach);
+		console.log('presaleAmount: ', presaleAmount, ' allowance: ', presaleBalance);
+		console.log('participantAmount: ', participantAmount, ' balance: ', participantBalance);
 
-    //assert.equal(await erc20Instance.allowance(auctionInstance.address, PRESALE_PARTICIPANT), AUCTION_CAP);
-    //console.log('After');
-
-
+		assert.notEqual(presaleBalance, 0);
+		assert.notEqual(participantBalance, 0);
   });
+
+	it('Token Vesting has recieved approval', async () => {
+
+	});
 
 });
