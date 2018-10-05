@@ -74,10 +74,6 @@ contract TokenVesting is Ownable {
     }
 
     function receiveApproval(address from, uint tokens, address token, bytes data)
-    notEmptyAddress(from)
-    notEmptyUint(tokens)
-    notEmptyAddress(token)
-    notEmptyBytes(data)
     public {
       require(data.length == 20);
       require(msg.sender == tokenAddress);

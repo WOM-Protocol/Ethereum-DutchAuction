@@ -100,9 +100,6 @@ contract SecondPriceAuction {
 				currentBonus -= 5;
 				currentBonusRound++;
 			}
-			if (buyins[msg.sender].received == 0) {	// We have new interest
-				lastNewInterest = uint32(block.number);
-			}
 		}
 
 		uint accounted;
@@ -161,12 +158,12 @@ contract SecondPriceAuction {
 	{
 
 		if (endPrice == 0) {
-			endPrice = (totalAccounted*DIVISOR / tokenCap*DIVISOR);
+			endPrice = (totalAccounted * DIVISOR / tokenCap);
 			emit Ended(endPrice);
 		}
 
 		uint total = buyins[_who].accounted;
-		uint tokens = ((total*DIVISOR) / endPrice) * DIVISOR;
+		uint tokens = total / endPrice;
 		totalFinalised += total;
 		bool presale = buyins[_who].presale;
 
@@ -181,10 +178,11 @@ contract SecondPriceAuction {
 
 		emit Finalised(_who, tokens);
 
-		if (totalFinalised == totalAccounted*DIVISOR) {
+		if (totalFinalised == totalAccounted) {
 			emit Retired();
 		}
 	}
+
 
 	// Return ether to participant if softcap is not met.
 	function claimRefund(address _who)
@@ -438,9 +436,6 @@ contract SecondPriceAuction {
 	/// The current percentage of bonus that purchasers get.
 	uint8 public currentBonus = 20;
 
-	/// The last block that had a new participant.
-	uint32 public lastNewInterest;
-
 	// Constants after constructor:
 
 	/// The tokens contract.
@@ -494,11 +489,11 @@ contract SecondPriceAuction {
 	uint constant public BONUS_LATCH = 2;
 
 	/// Number of Wei in one USD, constant.
-	uint constant public USDWEI = 4650 szabo;
+	uint constant public USDWEI = 4520 szabo;
 
 	/// Soft cap 10m USD in wei.
-	uint constant public USDWEI_SOFT_CAP = 35970 ether;
+	uint constant public USDWEI_SOFT_CAP = 45200 ether;
 
 	/// Divisor of the token.
-	uint constant public DIVISOR = 100000000000000000;
+	uint constant public DIVISOR = 1000000000000000000;
 }
