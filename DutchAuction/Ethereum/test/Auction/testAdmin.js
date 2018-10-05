@@ -27,7 +27,7 @@ contract('testAdmin.js', function(accounts) {
   const BEGIN_TIME = web3.eth.getBlock(web3.eth.blockNumber).timestamp + 1000;
   const END_TIME = BEGIN_TIME + (15 * DAY_EPOCH);
 
-	const USDWEI = 4650000000000000; // In WEI at time of testing 17/09/18
+	const USDWEI = 4520000000000000; // In WEI at time of testing 17/09/18
 
 	const NO_BONUS = 1000000000000000000;
 

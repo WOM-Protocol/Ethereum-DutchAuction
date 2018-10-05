@@ -27,9 +27,10 @@ contract('vesting.js', function(accounts) {
 	const DECIMAL_UNITS = 18;
 
 	const DAY_EPOCH = 86400;
+	const MONTH_EPOCH = 2629743;
   const BEGIN_TIME = web3.eth.getBlock(web3.eth.blockNumber).timestamp + 1000;
   const END_TIME = BEGIN_TIME + (15 * DAY_EPOCH);
-  const YEAR_EPOCH = DAY_EPOCH*365;
+  const YEAR_EPOCH = 31556926;
 
   const EMPTY_ADDRESS = '0x0000000000000000000000000000000000000000';
 
@@ -71,25 +72,22 @@ contract('vesting.js', function(accounts) {
 
 
     /* ---- notEmptyUint ---- */
-    let notEmptyUint = tokenVestingInstance.registerPresaleVest(PRESALE_PARTICIPANT, 0, YEAR_EPOCH+END_TIME, 2*YEAR_EPOCH);
+    let notEmptyUint = tokenVestingInstance.registerPresaleVest(PRESALE_PARTICIPANT, YEAR_EPOCH+END_TIME, 0, 25);
     AssertRevert.assertRevert(notEmptyUint);
 
     /* ---- notEmptyAddress ---- */
-    let notEmptyAddress = tokenVestingInstance.registerPresaleVest(EMPTY_ADDRESS, YEAR_EPOCH, YEAR_EPOCH+END_TIME, 2*YEAR_EPOCH);
+    let notEmptyAddress = tokenVestingInstance.registerPresaleVest(EMPTY_ADDRESS, YEAR_EPOCH+END_TIME, YEAR_EPOCH, 25);
     AssertRevert.assertRevert(notEmptyAddress);
 
-    /* ---- require(_cliff <= _duration); ---- */
-    let require_cliff = tokenVestingInstance.registerPresaleVest(PRESALE_PARTICIPANT, 2*YEAR_EPOCH, YEAR_EPOCH+END_TIME, YEAR_EPOCH);
-    AssertRevert.assertRevert(require_cliff);
 
-    await tokenVestingInstance.registerPresaleVest(PRESALE_PARTICIPANT, YEAR_EPOCH, YEAR_EPOCH+END_TIME, 2*YEAR_EPOCH);
+    await tokenVestingInstance.registerPresaleVest(PRESALE_PARTICIPANT, YEAR_EPOCH+END_TIME, YEAR_EPOCH, 25);
     let users = await tokenVestingInstance.users(PRESALE_PARTICIPANT);
     assert.equal(users[0], YEAR_EPOCH+END_TIME);
     assert.equal(users[1], YEAR_EPOCH);
-    assert.equal(users[2], 2*YEAR_EPOCH);
+    assert.equal(users[2], 25);
 
     /* ---- notRegistered ---- */
-    let notRegistered = tokenVestingInstance.registerPresaleVest(PRESALE_PARTICIPANT, YEAR_EPOCH, YEAR_EPOCH+END_TIME, 2*YEAR_EPOCH);
+    let notRegistered = tokenVestingInstance.registerPresaleVest(PRESALE_PARTICIPANT, YEAR_EPOCH+END_TIME, YEAR_EPOCH, 25);
     AssertRevert.assertRevert(notRegistered);
     await auctionInstance.inject(PRESALE_PARTICIPANT, PRESALE_PURCHASE, 15, {from:ADMIN});
     console.log('total accounted: ', Number(await auctionInstance.totalAccounted()));
@@ -134,17 +132,32 @@ contract('vesting.js', function(accounts) {
 		let participantBalance = Number(await erc20Instance.balanceOf(PARTICIPANT));
 		let presaleBalance = Number(await erc20Instance.allowance(auctionInstance.address, tokenVestingInstance.address));
 
-		console.log('totalAccounted: ', tokenCap);
-		console.log('perEach: ', perEach);
-		console.log('presaleAmount: ', presaleAmount, ' allowance: ', presaleBalance);
-		console.log('participantAmount: ', participantAmount, ' balance: ', participantBalance);
+		//console.log('presaleAmount: ', presaleAmount, ' allowance: ', presaleBalance);
+		//console.log('participantAmount: ', participantAmount, ' balance: ', participantBalance);
 
 		assert.notEqual(presaleBalance, 0);
 		assert.notEqual(participantBalance, 0);
   });
 
 	it('Token Vesting has recieved approval', async () => {
+		let presaleBalance = Number(await erc20Instance.allowance(auctionInstance.address, tokenVestingInstance.address));
+		let usersVest = await tokenVestingInstance.users(PRESALE_PARTICIPANT);
 
+		let shouldBeCliffRelease = presaleBalance * 0.25;
+		let shouldBePaymentPerMonth = (presaleBalance - shouldBeCliffRelease) / (12);
+
+		assert.equal(Number(usersVest[3]), shouldBeCliffRelease);
+		assert.equal(Number(usersVest[4]), shouldBePaymentPerMonth);
+		assert.equal(Number(usersVest[5]), presaleBalance);
+		assert.equal(Number(usersVest[7]), presaleBalance);
+	});
+
+	it('Release tokens', async () => {
+		/* ---- isRegistered ---- */
+		let isRegistered = tokenVestingInstance.release(PARTICIPANT);
+		AssertRevert.assertRevert(isRegistered);
+
+		
 	});
 
 });

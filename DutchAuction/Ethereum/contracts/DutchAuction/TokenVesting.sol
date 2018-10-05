@@ -22,16 +22,18 @@ contract TokenVesting is Ownable {
 
     Token public tokenContract;
 
+		uint256 public monthEpoch = 2629743;
+
     struct Account {
       uint256 start;
-      uint256 cliff;
       uint256 duration;
-      uint256 monthCount;
+			uint256 cliffReleasePercentage;
+			uint256 cliffReleaseAmount;
       uint256 paymentPerMonth;
       uint256 unreleased;
       uint256 released;
-      uint256 cliffReleaseAmount;
       uint256 total;
+			uint256 monthCount;
       bool cliffReleased;
     }
 
@@ -45,33 +47,39 @@ contract TokenVesting is Ownable {
     }
 
     /*
-       * @param _cliff duration in seconds of the cliff in which tokens will begin to vest
        * @param _start the time (as Unix time) at which point vesting starts
        * @param _duration duration in seconds of the period in which the tokens will vest
        * @para whether the vesting is revocable or not
        */
     function registerPresaleVest(
       address _who,
-      uint256 _cliff,
       uint256 _start,
-      uint256 _duration
+      uint256 _duration,
+			uint256 _cliffReleasePercentage
       )
       public
       only_owner
-      notEmptyUint(_cliff)
       notEmptyUint(_start)
       notEmptyUint(_duration)
+			notEmptyUint(_cliffReleasePercentage)
       notEmptyAddress(_who)
       notRegistered(_who)
     returns (bool)
     {
-      require(_cliff <= _duration);
       users[_who].start = _start;
-      users[_who].cliff = _cliff;
       users[_who].duration = _duration;
-      emit Registration(_who, _cliff, _duration);
+			users[_who].cliffReleasePercentage = _cliffReleasePercentage;
+      emit Registration(_who, _start, _duration);
       return true;
     }
+
+		function returnsCliffReleaseAmount(address _user, uint256 _amount) public view returns(uint256){
+			return	_amount * users[_user].cliffReleasePercentage / 100;
+		}
+
+		function returnPaymentPerMonth(address _user, uint256 _amount, uint256 _duration, uint256 _epoch) public view returns(uint256){
+			return _amount.sub(returnsCliffReleaseAmount(_user, _amount)).div(_duration.div(_epoch));
+		}
 
     function receiveApproval(address from, uint tokens, address token, bytes data)
     public {
@@ -79,13 +87,13 @@ contract TokenVesting is Ownable {
       require(msg.sender == tokenAddress);
       address _address = bytesToAddress(data);
       uint256 duration = users[_address].duration;
-      uint256 cliffReleaseAmount = tokens.div(25);
-      uint _paymentPerMonth = tokens.sub(cliffReleaseAmount).div(duration.div(4 weeks));
+			uint256 cliffReleaseAmount = tokens * users[_address].cliffReleasePercentage / 100;
+      uint256 _paymentPerMonth = tokens.sub(cliffReleaseAmount).div(duration.div(monthEpoch));
 
       users[_address].cliffReleaseAmount = cliffReleaseAmount;
+			users[_address].paymentPerMonth = _paymentPerMonth;
       users[_address].unreleased = tokens;
       users[_address].total = tokens;
-      users[_address].paymentPerMonth = _paymentPerMonth;
       emit TokensRecieved(_address, tokens, now);
     }
 
@@ -97,26 +105,27 @@ contract TokenVesting is Ownable {
     returns (uint256) {
       uint256 currentBalance = users[msg.sender].unreleased;
       uint256 start = users[msg.sender].start;
-      uint256 cliff = users[msg.sender].cliff;
       uint256 duration = users[msg.sender].duration;
       uint256 paymentPerMonth = users[msg.sender].paymentPerMonth;
-      uint256 timeWithCliff = now + start.add(cliff);
       uint256 monthCount = users[msg.sender].monthCount;
 
-      if (now < start.add(cliff)) {
+      if (now < start) {
         return 0;
       }
-      else if (now >= start.add(cliff.add(duration))) {
+      else if (now >= start.add(duration)) {
         users[msg.sender].released += currentBalance;
+				users[msg.sender].unreleased = 0;
         tokenContract.transfer(msg.sender, currentBalance);
         delete users[msg.sender];
         return currentBalance;
       }
-      else if(now >= start.add(cliff)){
+      else if(now >= start){
+
         if(users[msg.sender].cliffReleased){
 
-          if(now >= timeWithCliff.add(monthCount.mul(4 weeks))){
+          if(now >= start.add(monthCount.mul(monthEpoch))) {
             users[msg.sender].released += paymentPerMonth;
+						users[msg.sender].unreleased -= paymentPerMonth;
             users[msg.sender].monthCount += 1;
             tokenContract.transfer(msg.sender, paymentPerMonth);
             return users[msg.sender].paymentPerMonth;
@@ -124,7 +133,9 @@ contract TokenVesting is Ownable {
         }
         else{
           users[msg.sender].released += users[msg.sender].cliffReleaseAmount;
+					users[msg.sender].unreleased -= users[msg.sender].cliffReleaseAmount;
           users[msg.sender].cliffReleased = true;
+					users[msg.sender].monthCount = 1;
           tokenContract.transfer(msg.sender, users[msg.sender].cliffReleaseAmount);
           delete users[msg.sender].cliffReleaseAmount;
           return 0; // Return % of the cliff
