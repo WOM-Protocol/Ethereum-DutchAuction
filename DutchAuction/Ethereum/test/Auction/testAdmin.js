@@ -102,11 +102,22 @@ contract('testAdmin.js', function(accounts) {
 
     await auctionInstance.setHalted(true, {from:ADMIN});
     assert.equal(true, await auctionInstance.halted(), 'halted set');
-		  await auctionInstance.setHalted(false, {from:ADMIN});
+		await auctionInstance.setHalted(false, {from:ADMIN});
   });
 
-	it('Admin drain', async () => {
+
+	it('Admin change USDWEI price + softcap', async () => {
 		increaseTime(1000);
+
+		await auctionInstance.setUSDWei(web3.toWei(4521,'szabo'), {from:ADMIN});
+		assert.equal(Number(await auctionInstance.usdWEI()),  web3.toWei(4521,'szabo'));
+
+		await auctionInstance.setUSDSoftCap(web3.toWei(45201,'ether'), {from:ADMIN});
+		assert.equal(Number(await auctionInstance.usdWEISoftCap()),  web3.toWei(45201,'ether'));
+	});
+
+
+	it('Admin drain', async () => {
 			// Sign message //
 		const message = 'TLCS.'
 		hashedMessage = web3.sha3(message)
@@ -133,4 +144,6 @@ contract('testAdmin.js', function(accounts) {
 		assert.equal(web3.eth.getBalance(auctionInstance.address), 0);
 		assert.equal(Number(web3.eth.getBalance(TREASURY)),NO_BONUS+balanceBefore);
 	});
+
+
 });

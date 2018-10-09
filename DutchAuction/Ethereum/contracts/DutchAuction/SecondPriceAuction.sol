@@ -45,7 +45,7 @@ contract SecondPriceAuction {
 	event Finalised(address indexed who, uint tokens);
 
 	/// Sale did not reach softcap.
-	event SoftCapNotReached(uint indexed totalReceived, uint USDWEI_SOFT_CAP, address indexed _who);
+	event SoftCapNotReached(uint indexed totalReceived, uint usdWEISoftCap, address indexed _who);
 
 	/// Auction is over. All accounts finalised.
 	event Retired();
@@ -196,7 +196,7 @@ contract SecondPriceAuction {
 		only_buyins(_who)
 	{
 		//TODO; add check if already emitted
-		emit SoftCapNotReached(totalReceived, USDWEI_SOFT_CAP, _who);
+		emit SoftCapNotReached(totalReceived, usdWEISoftCap, _who);
 
 		uint total = buyins[_who].received;
 		totalFinalised += total;
@@ -211,6 +211,12 @@ contract SecondPriceAuction {
 
 
 	// Admin interaction:
+
+	/// Emergency function to update usdWEI price if bull run occurs
+	function setUSDWei(uint _usdWEI) public only_admin when_active { usdWEI = _usdWEI; }
+
+	/// Emergency function to update usdWEI soft cap if bull run occurs
+	function setUSDSoftCap(uint _usdWEISoftCap) public only_admin when_active { usdWEISoftCap = _usdWEISoftCap; }
 
 	/// Emergency function to pause buy-in and finalisation.
 	function setHalted(bool _halted) public only_admin { halted = _halted; }
@@ -251,9 +257,9 @@ contract SecondPriceAuction {
 	/// include the discount which may be available.
 	function currentPrice() public constant when_active returns (uint) {
 		if(hoursPassed() == 0){
-			return USDWEI;
+			return usdWEI;
 		}
-		return (USDWEI * 33200 / ( hoursPassed() + 80) - USDWEI * 65) / 350;
+		return (usdWEI * 33200 / ( hoursPassed() + 80) - usdWEI * 65) / 350;
 	}
 
 	function hoursPassed() public constant returns (uint) {
@@ -325,7 +331,7 @@ contract SecondPriceAuction {
 	function allFinalised() public constant returns (bool) { return now >= endTime && totalAccounted == totalFinalised; }
 
 	/// True is ether recieved greater than softcap.
-	function softCapMet() public constant returns (bool) { return totalReceived >= USDWEI_SOFT_CAP; }
+	function softCapMet() public constant returns (bool) { return totalReceived >= usdWEISoftCap; }
 
 	/// Recover address from signature
 	function recoverAddr(bytes32 msgHash, uint8 v, bytes32 r, bytes32 s) public pure returns (address) {
@@ -466,6 +472,13 @@ contract SecondPriceAuction {
 	// If finalized all transfers
 	bool public isFinalized;
 
+	/// Number of Wei in one USD.
+	uint public usdWEI = 4520 szabo;
+
+	/// Soft cap 10m USD in wei.
+	uint public usdWEISoftCap = 45200 ether;
+
+
 	// Static constants:
 
 	/// Anything less than this is considered dust and cannot be used to buy in.
@@ -489,12 +502,6 @@ contract SecondPriceAuction {
 
 	/// Number of consecutive blocks where there must be no new interest before bonus ends.
 	uint constant public BONUS_LATCH = 2;
-
-	/// Number of Wei in one USD, constant.
-	uint constant public USDWEI = 4520 szabo;
-
-	/// Soft cap 10m USD in wei.
-	uint constant public USDWEI_SOFT_CAP = 45200 ether;
 
 	/// Divisor of the token.
 	uint constant public DIVISOR = 1000000000000000000;
