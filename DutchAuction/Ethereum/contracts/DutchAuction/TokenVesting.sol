@@ -49,16 +49,6 @@ contract TokenVesting is Ownable {
       tokenContract = Token(_tokenWOM);
     }
 
-		function assignAuctionAddress(address _auctionAddress) public only_owner returns(bool){
-			auctionAddress = _auctionAddress;
-			return true;
-		}
-
-    function setLock(bool _lock) public only_owner returns(bool){
-      locked = _lock;
-      return true;
-    }
-
     function registerPresaleVest(
       address _who,
       uint256 _start,
@@ -147,6 +137,18 @@ contract TokenVesting is Ownable {
         tokenContract.transferFrom(auctionAddress, msg.sender, releaseAmount);
         return true;
       }
+    }
+
+    /* Admin functionality */
+    function assignAuctionAddress(address _auctionAddress) public only_owner returns(bool){
+      require(auctionAddress == address(0));
+      auctionAddress = _auctionAddress;
+      return true;
+    }
+
+    function setLock(bool _lock) public only_owner returns(bool){
+      locked = _lock;
+      return true;
     }
 
     function emergencyDrain(address _emergencyAddress) public only_owner isLocked returns(bool){
