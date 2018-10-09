@@ -4,130 +4,146 @@ const ERC20BurnableAndMintable = artifacts.require('./ERC20BurnableAndMintable.s
 const TokenVesting = artifacts.require('./TokenVesting.sol');
 
 const constants = require('../global.js');
+const aConstants = require('./auctionGlobals.js');
 
 const increaseTime = addSeconds => {
 	web3.currentProvider.send({jsonrpc: "2.0", method: "evm_increaseTime", params: [addSeconds], id: 0});
 	web3.currentProvider.send({jsonrpc: "2.0", method: "evm_mine", params: [], id: 1});
-}
+};
 
 contract('testAdmin.js', function(accounts) {
-  const BEGIN_TIME = web3.eth.getBlock(web3.eth.blockNumber).timestamp + 1000;
-  const END_TIME = BEGIN_TIME + (15 * constants.DAY_EPOCH);
+	const BEGIN_TIME = web3.eth.getBlock(web3.eth.blockNumber).timestamp + 1000;
+	const END_TIME = BEGIN_TIME + (15 * constants.DAY_EPOCH);
 
-	const USDWEI = 4520000000000000; //
-	const NO_BONUS = 1000000000000000000;
-
-	let certifierHandlerInstance;
-	let multiCertifierInstance;
-	let auctionInstance;
-	let erc20Instance;
-  let tokenVestingInstance;
-
-	it('Deploy Token', async () => {
-		erc20Instance = await ERC20BurnableAndMintable.new(
-			constants.TOKEN_SUPPLY, constants.TOKEN_NAME, 18, constants.TOKEN_SYMBOL);
-	});
-
-	it('Deply MultiCertifier', async () => {
-		multiCertifierInstance = await MultiCertifier.new();
-	});
-
-  it('Deploy Token Vesting', async () => {
-		tokenVestingInstance = await TokenVesting.new(erc20Instance.address);
-	});
-
-	it('Deploy && Start SecondPriceAuction', async () => {
-		auctionInstance = await SecondPriceAuction.new(
-			multiCertifierInstance.address,
-			erc20Instance.address,
-			tokenVestingInstance.address,
-			constants.TREASURY,
-			constants.ADMIN,
-			BEGIN_TIME,
-			constants.AUCTION_CAP);
-	});
-
-  it('Admin inject', async () => {
-    /* --- only_admin --- */
-    await auctionInstance.inject(constants.PARTICIPANT_ONE, 100, 15, {from:constants.PARTICIPANT_ONE}).catch(function(err){
-      assert.include(err.message,'VM Exception');
+	describe('Deployment', () => {
+    it('ERC20BurnableAndMintable', async () => {
+			this.erc20Instance = await ERC20BurnableAndMintable.new(
+				constants.TOKEN_SUPPLY, constants.TOKEN_NAME, 18, constants.TOKEN_SYMBOL);
     });
 
-    await auctionInstance.inject(constants.PARTICIPANT_ONE, 100, 15, {from:constants.ADMIN});
-    assert.equal(100, await auctionInstance.totalReceived(), 'Total recieved updated');
-    assert.equal(115, await auctionInstance.totalAccounted(), 'Total accounted updated');
-    let buyinsUser = await auctionInstance.buyins(constants.PARTICIPANT_ONE);
-    assert.equal(115, buyinsUser[0], 'participant accounted updated');
-    assert.equal(100, buyinsUser[1], 'participant accounted updated');
-    assert.equal(true, buyinsUser[2], 'participant accounted updated');
-  });
-
-  it('Admin uninject', async () => {
-    /* --- only_admin --- */
-    await auctionInstance.uninject(constants.PARTICIPANT_ONE, {from:constants.PARTICIPANT_ONE}).catch(function(err){
-      assert.include(err.message,'VM Exception');
+    it('MultiCertifier', async () => {
+			this.multiCertifierInstance = await MultiCertifier.new();
     });
 
-    await auctionInstance.uninject(constants.PARTICIPANT_ONE,{from:constants.ADMIN});
-    assert.equal(0, await auctionInstance.totalReceived(), 'Total recieved updated');
-    assert.equal(0, await auctionInstance.totalAccounted(), 'Total accounted updated');
-    let buyinsUser = await auctionInstance.buyins(constants.PARTICIPANT_ONE);
-    assert.equal(0, buyinsUser[0], 'participant account deleted');
-    assert.equal(0, buyinsUser[1], 'participant account deleted');
-    assert.equal(false, buyinsUser[2], 'participant account deleted');
-  });
-
-
-  it('Admin set halted', async () => {
-    /* --- only_admin --- */
-    await auctionInstance.setHalted(true, {from:constants.PARTICIPANT_ONE}).catch(function(err){
-      assert.include(err.message, 'VM Exception');
+		it('TokenVesting', async () => {
+			this.tokenVestingInstance = await TokenVesting.new(this.erc20Instance.address);
     });
 
-    await auctionInstance.setHalted(true, {from:constants.ADMIN});
-    assert.equal(true, await auctionInstance.halted(), 'halted set');
-		await auctionInstance.setHalted(false, {from:constants.ADMIN});
-  });
-
-
-	it('Admin change USDWEI price + softcap', async () => {
-		increaseTime(1000);
-
-		await auctionInstance.setUSDWei(web3.toWei(4521,'szabo'), {from:constants.ADMIN});
-		assert.equal(Number(await auctionInstance.usdWEI()),  web3.toWei(4521,'szabo'));
-
-		await auctionInstance.setUSDSoftCap(web3.toWei(45201,'ether'), {from:constants.ADMIN});
-		assert.equal(Number(await auctionInstance.usdWEISoftCap()),  web3.toWei(45201,'ether'));
+		it('SecondPriceAuction', async () => {
+			this.auctionInstance = await SecondPriceAuction.new(
+				this.multiCertifierInstance.address,
+				this.erc20Instance.address,
+				this.tokenVestingInstance.address,
+				constants.TREASURY,
+				constants.ADMIN,
+				BEGIN_TIME,
+				constants.AUCTION_CAP);
+		});
 	});
 
+	describe('function - inject()', () => {
+    it('catch only_admin modifier', async () => {
+			await this.auctionInstance.inject(constants.PARTICIPANT_ONE, 100, 15, {from:constants.PARTICIPANT_ONE}).catch(function(err){
+	      assert.include(err.message,'VM Exception');
+    	});
+		});
 
-	it('Admin drain', async () => {
-			// Sign message //
-		const message = 'TLCS.'
-		hashedMessage = web3.sha3(message)
-		assert.equal(await auctionInstance.STATEMENT_HASH(), hashedMessage);
-		var sig = await web3.eth.sign(constants.PARTICIPANT_ONE, hashedMessage).slice(2)
-		r = '0x' + sig.slice(0, 64)
-		s = '0x' + sig.slice(64, 128)
-		v = web3.toDecimal(sig.slice(128, 130)) + 27
-		assert.equal(await auctionInstance.isSigned(constants.PARTICIPANT_ONE, hashedMessage, v, r, s), true);
-		assert.equal(await auctionInstance.recoverAddr(hashedMessage, v, r, s), constants.PARTICIPANT_ONE);
-
-			// certify //
-		await multiCertifierInstance.certify(constants.PARTICIPANT_ONE);
-
-			// -- Buyin -- //
-		await auctionInstance.buyin(v, r, s, {from:constants.PARTICIPANT_ONE, value: NO_BONUS});
-		buyins = await auctionInstance.buyins(constants.PARTICIPANT_ONE);
-		increaseTime(END_TIME);
-
-			// drain //
-		let balanceBefore = Number(web3.eth.getBalance(constants.TREASURY));
-		assert.equal(await auctionInstance.isActive(), false);
-		await auctionInstance.drain({from:constants.ADMIN});
-		assert.equal(web3.eth.getBalance(auctionInstance.address), 0);
-		assert.equal(Number(web3.eth.getBalance(constants.TREASURY)),NO_BONUS+balanceBefore);
+    it('inject() PARTICIPANT_ONE 100 WEI 15% bonus', async () => {
+			await this.auctionInstance.inject(constants.PARTICIPANT_ONE, 100, 15, {from:constants.ADMIN});
+	    assert.equal(100, await this.auctionInstance.totalReceived(), 'Total recieved updated');
+	    assert.equal(115, await this.auctionInstance.totalAccounted(), 'Total accounted updated');
+	    let buyinsUser = await this.auctionInstance.buyins(constants.PARTICIPANT_ONE);
+	    assert.equal(115, buyinsUser[0], 'participant accounted updated');
+	    assert.equal(100, buyinsUser[1], 'participant accounted updated');
+	    assert.equal(true, buyinsUser[2], 'participant accounted updated');
+    });
 	});
 
+	describe('function - uninject()', () => {
+    it('catch only_admin modifier', async () => {
+			await this.auctionInstance.uninject(constants.PARTICIPANT_ONE, {from:constants.PARTICIPANT_ONE}).catch(function(err){
+	      assert.include(err.message,'VM Exception');
+	    });
+    });
 
+    it('uninject() PARTICIPANT_ONE 100 WEI', async () => {
+			await this.auctionInstance.uninject(constants.PARTICIPANT_ONE,{from:constants.ADMIN});
+	    assert.equal(0, await this.auctionInstance.totalReceived(), 'Total recieved updated');
+	    assert.equal(0, await this.auctionInstance.totalAccounted(), 'Total accounted updated');
+	    let buyinsUser = await this.auctionInstance.buyins(constants.PARTICIPANT_ONE);
+	    assert.equal(0, buyinsUser[0], 'participant account deleted');
+	    assert.equal(0, buyinsUser[1], 'participant account deleted');
+	    assert.equal(false, buyinsUser[2], 'participant account deleted');
+    });
+	});
+
+	describe('function - setHalted()', () => {
+    it('catch only_admin modifier', async () => {
+			await this.auctionInstance.setHalted(true, {from:constants.PARTICIPANT_ONE}).catch(function(err){
+	      assert.include(err.message, 'VM Exception');
+	    });
+    });
+
+    it('setHalted() TRUE by ADMIN', async () => {
+			await this.auctionInstance.setHalted(true, {from:constants.ADMIN});
+	    assert.equal(true, await this.auctionInstance.halted(), 'halted set');
+    });
+
+		it('setHalted() FALSE by ADMIN', async () => {
+			await this.auctionInstance.setHalted(false, {from:constants.ADMIN});
+			assert.equal(false, await this.auctionInstance.halted(), 'halted set');
+    });
+	});
+
+	describe('function setUSDWei() + setUSDSoftCap', () => {
+		it('increase time 100', async () => {
+			increaseTime(1000);
+		});
+
+    it('setusdWEI() to 4521 szabo from ADMIN', async () => {
+			await this.auctionInstance.setUSDWei(web3.toWei(4521,'szabo'), {from:constants.ADMIN});
+			assert.equal(Number(await this.auctionInstance.usdWEI()),  web3.toWei(4521,'szabo'));
+    });
+
+		it('setUSDSoftCap() to 45201 ether from ADMIN', async () => {
+			await this.auctionInstance.setUSDSoftCap(web3.toWei(45201,'ether'), {from:constants.ADMIN});
+			assert.equal(Number(await this.auctionInstance.usdWEISoftCap()),  web3.toWei(45201,'ether'));
+    });
+	});
+
+	describe('function setUSDWei() + setUSDSoftCap', () => {
+		let r, s, v, hashedMessage, buyins;
+		it('sign message', async () => {
+			const message = 'TLCS.';
+			hashedMessage = web3.sha3(message);
+			assert.equal(await this.auctionInstance.STATEMENT_HASH(), hashedMessage);
+			var sig = await web3.eth.sign(constants.PARTICIPANT_ONE, hashedMessage).slice(2);
+			r = '0x' + sig.slice(0, 64);
+			s = '0x' + sig.slice(64, 128);
+			v = web3.toDecimal(sig.slice(128, 130)) + 27;
+			assert.equal(await this.auctionInstance.isSigned(constants.PARTICIPANT_ONE, hashedMessage, v, r, s), true);
+			assert.equal(await this.auctionInstance.recoverAddr(hashedMessage, v, r, s), constants.PARTICIPANT_ONE);
+		});
+
+		it('certify PARTICIPANT_ONE', async () => {
+			await this.multiCertifierInstance.certify(constants.PARTICIPANT_ONE);
+		});
+
+		it('buyin from PARTICIPANT_ONE 1 ether', async () => {
+			await this.auctionInstance.buyin(v, r, s, {from:constants.PARTICIPANT_ONE, value: aConstants.NO_BONUS});
+			buyins = await this.auctionInstance.buyins(constants.PARTICIPANT_ONE);
+		});
+
+		it('increase time to END_TIME', async () => {
+			increaseTime(END_TIME);
+		});
+
+		it('drain buyin value from PARTICIPANT_ONE', async () => {
+			let balanceBefore = Number(web3.eth.getBalance(constants.TREASURY));
+			assert.equal(await this.auctionInstance.isActive(), false);
+			await this.auctionInstance.drain({from:constants.ADMIN});
+			assert.equal(web3.eth.getBalance(this.auctionInstance.address), 0);
+			assert.equal(Number(web3.eth.getBalance(constants.TREASURY)),aConstants.NO_BONUS+balanceBefore);
+		});
+	});
 });

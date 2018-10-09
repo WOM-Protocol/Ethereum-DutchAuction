@@ -4,7 +4,7 @@ const CertifierHandler = artifacts.require('./CertifierHandler.sol');
 const AssertRevert = require('../../helpers/AssertRevert.js');
 const constants = require('../global.js');
 
-contract('test - CertifierHandler', function(accounts) {
+contract('Certifier - CertifierHandler.sol', function(accounts) {
 	describe('Deployment', () => {
     it('MultiCertifier', async () => {
       this.multiCertifierInstance = await MultiCertifier.new();

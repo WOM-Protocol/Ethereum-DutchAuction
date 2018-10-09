@@ -3,13 +3,14 @@ const MultiCertifier = artifacts.require('./MultiCertifier.sol');
 const CertifierHandler = artifacts.require('./CertifierHandler.sol');
 const ERC20BurnableAndMintable = artifacts.require('./ERC20BurnableAndMintable.sol');
 const TokenVesting = artifacts.require('./TokenVesting.sol');
+const Ownable = artifacts.require('./Ownable.sol');
 const constants = require('./global.js');
 
 contract('Full Deployment Test', function(accounts) {
 	const BEGIN_TIME = web3.eth.getBlock(web3.eth.blockNumber).timestamp;
 
 
-  describe('Deployment', () => {
+  describe('Ownable Contract', () => {
     it('deploys', async () => {
       this.ownableInstance = await Ownable.new({from:constants.OWNER});
     });
@@ -26,12 +27,12 @@ contract('Full Deployment Test', function(accounts) {
     });
 
     it('assignment correct', async () => {
-      assert.equal(await this.erc20Instance.balanceOf(constants.TREASURY), constants.TOKEN_SUPPLY, 'Initial amount assigned to creator');
+      assert.equal(Number(await this.erc20Instance.balanceOf(constants.OWNER)), constants.TOKEN_SUPPLY, 'Initial amount assigned to creator');
       assert.equal(await this.erc20Instance.totalSupply(), constants.TOKEN_SUPPLY, 'Initial amount assigned to supply');
       assert.equal(await this.erc20Instance.name(), constants.TOKEN_NAME, 'Token name assigned');
       assert.equal(await this.erc20Instance.decimals(), constants.DECIMAL_UNITS, 'Decimal units assigned');
       assert.equal(await this.erc20Instance.symbol(), constants.TOKEN_SYMBOL, 'Token symbol assigned');
-      assert.equal(await this.erc20Instance.owner(), constants.TREASURY, 'Token owner assigned');
+      assert.equal(await this.erc20Instance.owner(), constants.OWNER, 'Token owner assigned');
     });
   });
 

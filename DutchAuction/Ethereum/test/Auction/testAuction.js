@@ -1,10 +1,10 @@
 const SecondPriceAuction = artifacts.require('./SecondPriceAuction.sol');
 const MultiCertifier = artifacts.require('./MultiCertifier.sol');
-const CertifierHandler = artifacts.require('./CertifierHandler.sol');
 const ERC20BurnableAndMintable = artifacts.require('./ERC20BurnableAndMintable.sol');
 const TokenVesting = artifacts.require('./TokenVesting.sol');
 
 const constants = require('../global.js');
+const aConstants = require('./auctionGlobals.js');
 
 const increaseTime = addSeconds => {
 	web3.currentProvider.send({jsonrpc: "2.0", method: "evm_increaseTime", params: [addSeconds], id: 0});
@@ -12,88 +12,117 @@ const increaseTime = addSeconds => {
 }
 
 contract('testAuction.js', function(accounts) {
-  const BEGIN_TIME = web3.eth.getBlock(web3.eth.blockNumber).timestamp + 1000;
+	const BEGIN_TIME = web3.eth.getBlock(web3.eth.blockNumber).timestamp + 1000;
   const END_TIME = BEGIN_TIME + (15 * constants.DAY_EPOCH);
 
-	const USDWEI = 4520000000000000; // In WEI at time of testing 26/09/18
+	describe('Deployment', () => {
+		it('ERC20BurnableAndMintable', async () => {
+			this.erc20Instance = await ERC20BurnableAndMintable.new(
+				constants.TOKEN_SUPPLY, constants.TOKEN_NAME, 18, constants.TOKEN_SYMBOL);
+		});
 
+		it('MultiCertifier', async () => {
+			this.multiCertifierInstance = await MultiCertifier.new();
+		});
 
-	let certifierHandlerInstance;
-	let multiCertifierInstance;
-	let auctionInstance;
-	let erc20Instance;
-  let tokenVestingInstance;
+		it('TokenVesting', async () => {
+			this.tokenVestingInstance = await TokenVesting.new(this.erc20Instance.address);
+		});
 
-	it('Deploy Token', async () => {
-		erc20Instance = await ERC20BurnableAndMintable.new(
-			constants.TOKEN_SUPPLY, constants.TOKEN_NAME, 18, constants.TOKEN_SYMBOL);
+		it('SecondPriceAuction', async () => {
+			this.auctionInstance = await SecondPriceAuction.new(
+				this.multiCertifierInstance.address,
+				this.erc20Instance.address,
+				this.tokenVestingInstance.address,
+				constants.TREASURY,
+				constants.ADMIN,
+				BEGIN_TIME,
+				constants.AUCTION_CAP);
+		});
+	});
+	describe('catch when_active modifier', () => {
+		it('function - currentPrice()', async () => {
+			await this.auctionInstance.currentPrice().catch(function(err){
+	      assert.include(err.message,'VM Exception');
+			});
+		});
+
+		it('function - tokensAvailable()', async () => {
+			await this.auctionInstance.tokensAvailable().catch(function(err){
+	      assert.include(err.message,'VM Exception');
+	    });
+		});
+
+		it('function - maxPurchase()', async () => {
+			await this.auctionInstance.maxPurchase().catch(function(err){
+	      assert.include(err.message,'VM Exception');
+	    });
+		});
+
+		it('function - bonus()', async () => {
+			await this.auctionInstance.bonus(100).catch(function(err){
+	      assert.include(err.message,'VM Exception');
+	    });
+		});
+
+		it('function - theDeal()', async () => {
+			await this.auctionInstance.theDeal(100).catch(function(err){
+	      assert.include(err.message,'VM Exception');
+	    });
+		});
 	});
 
-	it('Deply MultiCertifier', async () => {
-		multiCertifierInstance = await MultiCertifier.new();
+	describe('start auction validation', () => {
+		it('increaseTime by 1000', async () => {
+			increaseTime(1000);
+		});
+		it('var - endTime set', async () => {
+			assert.equal(await this.auctionInstance.endTime(), END_TIME, 'END time set correctly');
+		});
+		it('function - isActive() TRUE', async () => {
+			assert.equal(true, await this.auctionInstance.isActive(), 'Active auction');
+		});
+		it('function - allFinalised() false', async () => {
+			assert.equal(false, await this.auctionInstance.allFinalised(), 'not finalized auction');
+		});
+		it('function - hoursPassed 0', async () => {
+			assert.equal(0, await this.auctionInstance.hoursPassed(), 'no hours passed');
+		});
+		it('function - softCapMet() false', async () => {
+			assert.equal(false, await this.auctionInstance.softCapMet(), 'soft cap not met');
+		});
+		it('function - currentPrice() 1USD', async () => {
+			assert.equal(aConstants.USDWEI, Number(await this.auctionInstance.currentPrice()), 'Current price 1$');
+		});
+		it('function - tokensAvailable() AUCTION_CAP', async () => {
+			assert.equal(constants.AUCTION_CAP, await this.auctionInstance.tokensAvailable(), 'full tokens available');
+		});
+		it('function - maxPurchase() 350mUSD', async () => {
+			assert.equal(constants.AUCTION_CAP*aConstants.USDWEI, await this.auctionInstance.maxPurchase(), 'all tokens available for purchase');
+		});
+		it('function - currentBonus() 20', async () => {
+			assert.equal(20, await this.auctionInstance.currentBonus(), 'Current bonus');
+		});
+		it('function - bonus() 20% bonus of 100 == 120', async () => {
+			assert.equal(20, await this.auctionInstance.bonus(100), 'Bonus added correctly');
+		});
+		it('function - theDeal() 100, 20% bonus', async () => {
+			let theDealRes = await this.auctionInstance.theDeal(100);
+			assert.equal(120, theDealRes[0], 'deal added');
+			assert.equal(false, theDealRes[1], 'no refund needed');
+			assert.equal(aConstants.USDWEI, theDealRes[2], 'price still 1$');
+		});
 	});
 
-  it('Deploy Token Vesting', async () => {
-		tokenVestingInstance = await TokenVesting.new(erc20Instance.address);
+	describe('End auction validation', () => {
+		it('increaseTime to END_TIME', async () => {
+			increaseTime(END_TIME);
+		});
+		it('function - isActive() FALSE', async () => {
+			assert.equal(false, await this.auctionInstance.isActive(), 'Auction ended');
+		});
+		it('function - allFinalised() TRUE', async () => {
+			assert.equal(true, await this.auctionInstance.allFinalised(), 'All finalized');
+		});
 	});
-
-	it('Deply SecondPriceAuction', async () => {
-		auctionInstance = await SecondPriceAuction.new(
-			multiCertifierInstance.address,
-			erc20Instance.address,
-			tokenVestingInstance.address,
-			constants.TREASURY,
-			constants.ADMIN,
-			BEGIN_TIME,
-			constants.AUCTION_CAP);
-	});
-
-  it('Ensure not started', async () => {
-    await auctionInstance.currentPrice().catch(function(err){
-      assert.include(err.message,'VM Exception');
-    });
-
-    await auctionInstance.tokensAvailable().catch(function(err){
-      assert.include(err.message,'VM Exception');
-    });
-
-    await auctionInstance.maxPurchase().catch(function(err){
-      assert.include(err.message,'VM Exception');
-    });
-
-    await auctionInstance.bonus(100).catch(function(err){
-      assert.include(err.message,'VM Exception');
-    });
-
-    await auctionInstance.theDeal(100).catch(function(err){
-      assert.include(err.message,'VM Exception');
-    });
-  });
-
-  it('Start Auction', async () => {
-		increaseTime(1000);
-		/*  ---- Public vars ---- */
-		assert.equal(await auctionInstance.endTime(), END_TIME, 'END time set correctly');
-		assert.equal(true, await auctionInstance.isActive(), 'Active auction');
-		assert.equal(false, await auctionInstance.allFinalised(), 'not finalized auction');
-		assert.equal(0, await auctionInstance.hoursPassed(), 'no hours passed');
-		assert.equal(false, await auctionInstance.softCapMet(), 'soft cap not met');
-		// assert.equal(web3.eth.getBlock(web3.eth.blockNumber).timestamp, parseInt(await auctionInstance.currentTime()), 'current time'); // Test sometimes fails with 1 second deviation
-		assert.equal(USDWEI, Number(await auctionInstance.currentPrice()), 'Current price 1$');
-		assert.equal(constants.AUCTION_CAP, await auctionInstance.tokensAvailable(), 'full tokens available');
-		assert.equal(constants.AUCTION_CAP*USDWEI, await auctionInstance.maxPurchase(), 'all tokens available for purchase');
-		assert.equal(20, await auctionInstance.currentBonus(), 'Current bonus');
-		assert.equal(20, await auctionInstance.bonus(100), 'Bonus added correctly');
-		let theDealRes = await auctionInstance.theDeal(100);
-		assert.equal(120, theDealRes[0], 'deal added');
-		assert.equal(false, theDealRes[1], 'no refund needed');
-		assert.equal(USDWEI, theDealRes[2], 'price still 1$');
-	});
-
-	it('End Auction', async () => {
-		increaseTime(END_TIME);
-		assert.equal(false, await auctionInstance.isActive(), 'Auction ended');
-		assert.equal(true, await auctionInstance.allFinalised(), 'All finalized');
-	});
-
 });
