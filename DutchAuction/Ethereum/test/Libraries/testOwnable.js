@@ -3,34 +3,44 @@ const AssertRevert = require('../../helpers/AssertRevert.js');
 
 const constants = require('../global.js');
 
-contract('Ownable.sol - testOwnable', async (accounts) => {
+contract('Libraries - testOwnable.js', async (accounts) => {
 
-  let ownableInstance;
-  it('Deploy Ownable.sol', async () => {
-    ownableInstance = await Ownable.new({from:constants.OWNER});
+  describe('Deployment Ownable.sol', () => {
+    it('deploys', async () => {
+      this.ownableInstance = await Ownable.new({from:constants.OWNER});
+    });
 
-    assert.equal(await ownableInstance.owner(), constants.OWNER, 'Owner is correctly set');
+    it('initial assignment correct', async () => {
+      assert.equal(await this.ownableInstance.owner(), constants.OWNER, 'Owner is correctly set');
+    });
   });
 
+  describe('function - transferOwnership()', () => {
+    it('catch only_owner modifier', async () => {
+      let only_owner = this.ownableInstance.transferOwnership(constants.ADMIN, {from:constants.NOT_OWNER});
+      AssertRevert.assertRevert(only_owner);
+    });
 
-  it('transferOwnership', async () => {
-    /* --- only_owner ---- */
-   let only_owner = ownableInstance.transferOwnership(constants.ADMIN, {from:constants.NOT_OWNER});
-   AssertRevert.assertRevert(only_owner);
+    it('catch require not empty address', async () => {
+      let require_not_empty = this.ownableInstance.transferOwnership(constants.EMPTY_ADDRESS, {from:constants.OWNER});
+      AssertRevert.assertRevert(require_not_empty);
+    });
 
-     /* --- require(_newOwner != address(0)); ---- */
-    let require_not_empty = ownableInstance.transferOwnership(constants.EMPTY_ADDRESS, {from:constants.OWNER});
-    AssertRevert.assertRevert(require_not_empty);
-
-    await ownableInstance.transferOwnership(constants.ADMIN, {from:constants.OWNER});
-    assert.equal(await ownableInstance.owner(), constants.ADMIN, 'Owner is correctly set');
+    it('transfer ownership from OWNER to ADMIN', async () => {
+      await this.ownableInstance.transferOwnership(constants.ADMIN, {from:constants.OWNER});
+      assert.equal(await this.ownableInstance.owner(), constants.ADMIN, 'Owner is correctly set');
+    });
   });
 
-  it('renounceOwnership', async () => {
-    /* --- only_owner ---- */
-   let only_owner = ownableInstance.renounceOwnership({from:constants.NOT_OWNER});
-   AssertRevert.assertRevert(only_owner);
-   await ownableInstance.renounceOwnership({from:constants.ADMIN});
-   assert.equal(await ownableInstance.owner(), constants.EMPTY_ADDRESS, 'Empty owner address');
+  describe('function - renounceOwnership()', () => {
+    it('catch only_owner modifier', async () => {
+      let only_owner = this.ownableInstance.renounceOwnership({from:constants.NOT_OWNER});
+      AssertRevert.assertRevert(only_owner);
+    });
+
+    it('renounce ownership from ADMIN', async () => {
+      await this.ownableInstance.renounceOwnership({from:constants.ADMIN});
+      assert.equal(await this.ownableInstance.owner(), constants.EMPTY_ADDRESS, 'Empty owner address');
+     });
   });
 });

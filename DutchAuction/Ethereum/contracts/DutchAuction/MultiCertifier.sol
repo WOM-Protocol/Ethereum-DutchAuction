@@ -11,10 +11,7 @@ import '../Libraries/Ownable.sol';
 contract Certifier {
 	event Confirmed(address indexed who);
 	event Revoked(address indexed who);
-	function certified(address) public constant returns (bool);
-	function get(address, string) public constant returns (bytes32);
-	function getAddress(address, string) public constant returns (address);
-	function getUint(address, string) public constant returns (uint);
+	function certified(address) public view returns (bool);
 }
 
 /**
@@ -60,16 +57,11 @@ contract MultiCertifier is Certifier, Ownable {
 		emit Revoked(_who, msg.sender);
 	}
 
-	function certified(address _who) public constant returns (bool) { return certs[_who].active; }
-	function getCertifier(address _who) public constant returns (address) { return certs[_who].certifier; }
+	function certified(address _who) public view returns (bool) { return certs[_who].active; }
+	function getCertifier(address _who) public view returns (address) { return certs[_who].certifier; }
 	function addDelegate(address _new) public only_owner { delegates[_new] = true; }
 	function removeDelegate(address _old) public only_owner { delete delegates[_old]; }
 
 	mapping (address => Certification) public certs;
 	mapping (address => bool) public delegates;
-
-	/// Unused interface methods.
-	function get(address, string) public constant returns (bytes32) {}
-	function getAddress(address, string) public constant returns (address) {}
-	function getUint(address, string) public constant returns (uint) {}
 }

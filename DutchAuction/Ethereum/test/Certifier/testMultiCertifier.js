@@ -4,72 +4,87 @@ const AssertRevert = require('../../helpers/AssertRevert.js');
 const constants = require('../global.js');
 
 contract('MultiCertifier.sol', function(accounts) {
-  let multiCertifierInstance;
+  describe('Deployment Ownable.sol', () => {
+    it('deploys', async () => {
+      this.multiCertifierInstance = await MultiCertifier.new();
+    });
+  });
 
-	it('Deply MultiCertifier', async () => {
-		multiCertifierInstance = await MultiCertifier.new();
-	});
-
-
-  it('Add Delegate', async () => {
-    /* ---- only_owner; ---- */
-   let only_owner = multiCertifierInstance.addDelegate(constants.ADMIN, {from:constants.PARTICIPANT_ONE});
-   AssertRevert.assertRevert(only_owner);
-
-    await multiCertifierInstance.addDelegate(constants.ADMIN);
-    assert.equal(await multiCertifierInstance.delegates(constants.ADMIN), true, 'Delegate added');
-    assert.equal(await multiCertifierInstance.delegates(constants.PARTICIPANT_ONE), false, 'Delegate false');
+  describe('function - addDelegate()', () => {
+    it('catch only_owner modifier', async () => {
+      let only_owner = this.multiCertifierInstance.addDelegate(constants.ADMIN, {from:constants.PARTICIPANT_ONE});
+      AssertRevert.assertRevert(only_owner);
     });
 
-  it('Remove delegate', async () => {
-    let only_owner = multiCertifierInstance.removeDelegate(constants.ADMIN, {from:constants.PARTICIPANT_ONE});
-    AssertRevert.assertRevert(only_owner);
-
-    await multiCertifierInstance.removeDelegate(constants.ADMIN);
-    assert.equal(await multiCertifierInstance.delegates(constants.ADMIN), false, 'Delegate removed');
-    await multiCertifierInstance.addDelegate(constants.ADMIN);
+    it('set delegate to be ADMIN', async () => {
+      await this.multiCertifierInstance.addDelegate(constants.ADMIN);
+      assert.equal(await this.multiCertifierInstance.delegates(constants.ADMIN), true, 'Delegate added');
+      assert.equal(await this.multiCertifierInstance.delegates(constants.PARTICIPANT_ONE), false, 'Delegate false');
+    });
   });
 
-  it('certify', async () => {
-    /* ---- only_delegate; not delgate/owner ---- */
-    let only_delegate_neither = multiCertifierInstance.certify(constants.PARTICIPANT_TWO, {from:constants.PARTICIPANT_ONE});
-    AssertRevert.assertRevert(only_delegate_neither);
+  describe('function - removeDelegate()', () => {
+    it('catch only_owner modifier', async () => {
+      let only_owner = this.multiCertifierInstance.removeDelegate(constants.ADMIN, {from:constants.PARTICIPANT_ONE});
+      AssertRevert.assertRevert(only_owner);
+    });
 
-    /* ---- from owner ---- */
-    await multiCertifierInstance.certify(constants.PARTICIPANT_TWO);
-    let certs = await multiCertifierInstance.certs(constants.PARTICIPANT_TWO);
-    assert.equal(certs[1], true, 'PARTICIPANT2 added');
-    assert.equal(certs[0], constants.OWNER, 'PARTICIPANT2 added');
+    it('remove delegate ADMIN', async () => {
+      await this.multiCertifierInstance.removeDelegate(constants.ADMIN);
+      assert.equal(await this.multiCertifierInstance.delegates(constants.ADMIN), false, 'Delegate removed');
+    });
 
-    let certified = await multiCertifierInstance.certified(constants.PARTICIPANT_TWO);
-    assert.equal(certified, true, 'certified getter true');
-
-    let certifier = await multiCertifierInstance.getCertifier(constants.PARTICIPANT_TWO);
-    assert.equal(certifier, constants.OWNER, 'certifier getter equal to owner');
-
-    /* ---- only_uncertified ---- */
-    let only_uncertified = multiCertifierInstance.certify(constants.PARTICIPANT_TWO);
-    AssertRevert.assertRevert(only_uncertified);
+    it('re-set delegate to ADMIN', async () => {
+      await this.multiCertifierInstance.addDelegate(constants.ADMIN);
+      assert.equal(await this.multiCertifierInstance.delegates(constants.ADMIN), true, 'Delegate re-added');
+    });
   });
 
-  it('revoke', async () => {
-    /* ---- only_certifier_of; not certifier ---- */
-    let only_certifier_of = multiCertifierInstance.revoke(constants.PARTICIPANT_TWO, {from:constants.PARTICIPANT_ONE});
-    AssertRevert.assertRevert(only_certifier_of);
+  describe('function - certify()', () => {
+    it('catch only_delegate modifier', async () => {
+      let only_delegate_neither = this.multiCertifierInstance.certify(constants.PARTICIPANT_TWO, {from:constants.PARTICIPANT_ONE});
+      AssertRevert.assertRevert(only_delegate_neither);
+    });
 
-    /* ---- only_certified ---- */
-    let only_certifier = multiCertifierInstance.revoke(constants.PARTICIPANT_ONE);
-    AssertRevert.assertRevert(only_certifier);
+    it('set certified PARTICIPANT_TWO to TRUE', async () => {
+      await this.multiCertifierInstance.certify(constants.PARTICIPANT_TWO);
+      let certs = await this.multiCertifierInstance.certs(constants.PARTICIPANT_TWO);
+      assert.equal(certs[1], true, 'PARTICIPANT2 added');
+      assert.equal(certs[0], constants.OWNER, 'PARTICIPANT2 added');
+    });
 
-    await multiCertifierInstance.revoke(constants.PARTICIPANT_TWO);
-    let certs = await multiCertifierInstance.certs(constants.PARTICIPANT_TWO);
-    assert.equal(certs[1], false, 'PARTICIPANT2 added');
-    assert.equal(certs[0], constants.OWNER, 'PARTICIPANT2 added');
+    it('get certified() PARTICIPANT_TWO', async () => {
+      let certified = await this.multiCertifierInstance.certified(constants.PARTICIPANT_TWO);
+      assert.equal(certified, true, 'certified getter true');
+    });
+
+    it('get getCertifier() PARTICIPANT_TWO', async () => {
+      let certifier = await this.multiCertifierInstance.getCertifier(constants.PARTICIPANT_TWO);
+      assert.equal(certifier, constants.OWNER, 'certifier getter equal to owner');
+    });
+
+    it('catch only_uncertified modifier', async () => {
+      let only_uncertified = this.multiCertifierInstance.certify(constants.PARTICIPANT_TWO);
+      AssertRevert.assertRevert(only_uncertified);
+    });
   });
 
-  it('Unused interface functions', async () => {
-    await multiCertifierInstance.get(constants.PARTICIPANT_ONE, 'test');
-    await multiCertifierInstance.getAddress(constants.PARTICIPANT_ONE, 'test');
-    await multiCertifierInstance.getUint(constants.PARTICIPANT_ONE, 'test');
+  describe('function - revoke()', () => {
+    it('catch only_certifier_of modifier', async () => {
+      let only_certifier_of = this.multiCertifierInstance.revoke(constants.PARTICIPANT_TWO, {from:constants.PARTICIPANT_ONE});
+      AssertRevert.assertRevert(only_certifier_of);
+    });
+
+    it('catch only_certified modifier', async () => {
+      let only_certifier = this.multiCertifierInstance.revoke(constants.PARTICIPANT_ONE);
+      AssertRevert.assertRevert(only_certifier);
+    });
+
+    it('revoke PARTICIPANT_TWO from OWNER', async () => {
+      await this.multiCertifierInstance.revoke(constants.PARTICIPANT_TWO);
+      let certs = await this.multiCertifierInstance.certs(constants.PARTICIPANT_TWO);
+      assert.equal(certs[1], false, 'PARTICIPANT2 added');
+      assert.equal(certs[0], constants.OWNER, 'PARTICIPANT2 added');
+    });
   });
 });

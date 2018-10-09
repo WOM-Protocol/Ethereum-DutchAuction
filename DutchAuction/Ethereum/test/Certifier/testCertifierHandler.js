@@ -5,46 +5,57 @@ const AssertRevert = require('../../helpers/AssertRevert.js');
 const constants = require('../global.js');
 
 contract('test - CertifierHandler', function(accounts) {
-	let certifierHandlerInstance;
-	let multiCertifierInstance;
+	describe('Deployment', () => {
+    it('MultiCertifier', async () => {
+      this.multiCertifierInstance = await MultiCertifier.new();
+    });
 
-	it('Deploy MultiCertifier', async () => {
-		multiCertifierInstance = await MultiCertifier.new();
-	});
-
-	it('Deploy CertifierHandler', async () => {
-		certifierHandlerInstance = await CertifierHandler.new(multiCertifierInstance.address, constants.TREASURY);
-	});
-
-  it('Set Fee', async () => {
-    let only_owner = certifierHandlerInstance.setFee(1,{from:constants.NOT_OWNER});
-    AssertRevert.assertRevert(only_owner);
-    assert.equal(await certifierHandlerInstance.fee(), 0);
-
-    await certifierHandlerInstance.setFee(1);
-    assert.equal(await certifierHandlerInstance.fee(), 1);
-	});
-
-  it('Set Treasury', async () => {
-    let only_owner = certifierHandlerInstance.setTreasury(constants.ADMIN,{from:constants.NOT_OWNER});
-    AssertRevert.assertRevert(only_owner);
-    assert.equal(await certifierHandlerInstance.treasury(), constants.TREASURY);
-
-    await certifierHandlerInstance.setTreasury(constants.ADMIN);
-    assert.equal(await certifierHandlerInstance.treasury(), constants.ADMIN);
-
-    await certifierHandlerInstance.setTreasury(constants.TREASURY);
-    assert.equal(await certifierHandlerInstance.treasury(), constants.TREASURY);
+    it('CertifierHandler', async () => {
+      this.certifierHandlerInstance = await CertifierHandler.new(this.multiCertifierInstance.address, constants.TREASURY);
+    });
   });
 
-  it('Set Locked', async () => {
-    let only_owner = certifierHandlerInstance.setLocked(constants.LOCKED_ACCOUNT,{from:constants.NOT_OWNER});
-    AssertRevert.assertRevert(only_owner);
-    assert.equal(await certifierHandlerInstance.locked(constants.LOCKED_ACCOUNT), false);
+	describe('function - setFee()', () => {
+    it('catch only_owner modifier', async () => {
+			let only_owner = this.certifierHandlerInstance.setFee(1,{from:constants.NOT_OWNER});
+	    AssertRevert.assertRevert(only_owner);
+			assert.equal(await this.certifierHandlerInstance.fee(), 0);
+    });
 
-    await certifierHandlerInstance.setLocked(constants.LOCKED_ACCOUNT);
-    assert.equal(await certifierHandlerInstance.locked(constants.LOCKED_ACCOUNT), true);
+    it('set fee to 1', async () => {
+			await this.certifierHandlerInstance.setFee(1);
+			assert.equal(await this.certifierHandlerInstance.fee(), 1);
+		});
+  });
+
+	describe('function - setTreasury()', () => {
+		it('catch only_owner modifier', async () => {
+			let only_owner = this.certifierHandlerInstance.setTreasury(constants.ADMIN,{from:constants.NOT_OWNER});
+	    AssertRevert.assertRevert(only_owner);
+	    assert.equal(await this.certifierHandlerInstance.treasury(), constants.TREASURY);
+		});
+
+		it('set treasury from TREASURY to ADMIN', async () => {
+			await this.certifierHandlerInstance.setTreasury(constants.ADMIN);
+	    assert.equal(await this.certifierHandlerInstance.treasury(), constants.ADMIN);
+		});
+
+		it('set treasury from ADMIN to TREASURY', async () => {
+			await this.certifierHandlerInstance.setTreasury(constants.TREASURY);
+	    assert.equal(await this.certifierHandlerInstance.treasury(), constants.TREASURY);
+		});
 	});
 
+	describe('function - setLocked()', () => {
+		it('catch only_owner modifier', async () => {
+			let only_owner = this.certifierHandlerInstance.setLocked(constants.LOCKED_ACCOUNT,{from:constants.NOT_OWNER});
+	    AssertRevert.assertRevert(only_owner);
+	    assert.equal(await this.certifierHandlerInstance.locked(constants.LOCKED_ACCOUNT), false);
+		});
 
+		it('set LOCKED_ACCOUNT to locked', async () => {
+			await this.certifierHandlerInstance.setLocked(constants.LOCKED_ACCOUNT);
+	    assert.equal(await this.certifierHandlerInstance.locked(constants.LOCKED_ACCOUNT), true);
+		});
+	});
 });

@@ -8,6 +8,17 @@ const constants = require('./global.js');
 contract('Full Deployment Test', function(accounts) {
 	const BEGIN_TIME = web3.eth.getBlock(web3.eth.blockNumber).timestamp;
 
+
+  describe('Deployment', () => {
+    it('deploys', async () => {
+      this.ownableInstance = await Ownable.new({from:constants.OWNER});
+    });
+
+    it('initial assignment correct', async () => {
+      assert.equal(await this.ownableInstance.owner(), constants.OWNER, 'Owner is correctly set');
+    });
+  });
+
   describe('Token Contract', () => {
     it('deploys', async () => {
       this.erc20Instance =  await ERC20BurnableAndMintable.new(
