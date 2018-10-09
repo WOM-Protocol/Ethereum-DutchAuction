@@ -3,7 +3,7 @@ const MultiCertifier = artifacts.require('./MultiCertifier.sol');
 const CertifierHandler = artifacts.require('./CertifierHandler.sol');
 const ERC20BurnableAndMintable = artifacts.require('./ERC20BurnableAndMintable.sol');
 const TokenVesting = artifacts.require('./TokenVesting.sol');
-var constants = require('./global.js');
+const constants = require('./global.js');
 
 contract('Full Deployment Test', function(accounts) {
 	const BEGIN_TIME = web3.eth.getBlock(web3.eth.blockNumber).timestamp;

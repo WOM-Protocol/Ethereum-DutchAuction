@@ -4,6 +4,7 @@ const SecondPriceAuction = artifacts.require('./SecondPriceAuction.sol');
 const MultiCertifier = artifacts.require('./MultiCertifier.sol');
 const ERC20BurnableAndMintable = artifacts.require('./ERC20BurnableAndMintable.sol');
 const TokenVesting = artifacts.require('./TokenVesting.sol');
+const constants = require('../global.js');
 
 const AssertRevert = require('../../helpers/AssertRevert.js');
 
@@ -13,24 +14,9 @@ const increaseTime = addSeconds => {
 }
 
 contract('testContribution.js', function(accounts) {
-  const OWNER = accounts[0];
-	const ADMIN = accounts[1];
-  const TREASURY = accounts[2];
-  const PARTICIPANT = accounts[5];
-	const PARTICIPANT1 = accounts[6];
 
-  const TRAILING_DECIMALS = 000000000000000000;
-	const TOKEN_SUPPLY = 1000000000000000000000000000;
-	const AUCTION_CAP = 350000000000000000000000000;
-	const TOKEN_NAME = 'WOMToken';
-	const TOKEN_SYMBOL = 'WOM';
-	const DECIMAL_UNITS = 18;
-
-	const DAY_EPOCH = 86400;
-	const WEEK_EPOCH = DAY_EPOCH*7;
-	const HOUR_EPOCH = DAY_EPOCH/24;
   const BEGIN_TIME = web3.eth.getBlock(web3.eth.blockNumber).timestamp + 1000;
-  const END_TIME = BEGIN_TIME + (15 * DAY_EPOCH);
+  const END_TIME = BEGIN_TIME + (15 * constants.DAY_EPOCH);
 
 	const USDWEI = 4520000000000000; // In WEI at time of testing 26/09/18
 	const TLCS = 'This is an example terms and conditions.';
@@ -58,7 +44,7 @@ contract('testContribution.js', function(accounts) {
 
 	it('Deploy Token', async () => {
 		erc20Instance = await ERC20BurnableAndMintable.new(
-			TOKEN_SUPPLY, TOKEN_NAME, 18, TOKEN_SYMBOL);
+			constants.TOKEN_SUPPLY, constants.TOKEN_NAME, 18, constants.TOKEN_SYMBOL);
 	});
 
 	it('Deply MultiCertifier', async () => {
@@ -74,10 +60,10 @@ contract('testContribution.js', function(accounts) {
 			multiCertifierInstance.address,
 			erc20Instance.address,
 			tokenVestingInstance.address,
-			TREASURY,
-			ADMIN,
+			constants.TREASURY,
+			constants.ADMIN,
 			BEGIN_TIME,
-			AUCTION_CAP);
+			constants.AUCTION_CAP);
 	});
 
   it('sign & purchase & end', async () => {
@@ -86,28 +72,28 @@ contract('testContribution.js', function(accounts) {
     const message = 'TLCS.'
     hashedMessage = web3.sha3(message)
     assert.equal(await auctionInstance.STATEMENT_HASH(), hashedMessage);
-    var sig = await web3.eth.sign(PARTICIPANT, hashedMessage).slice(2)
+    var sig = await web3.eth.sign(constants.PARTICIPANT_ONE, hashedMessage).slice(2)
     r = '0x' + sig.slice(0, 64)
     s = '0x' + sig.slice(64, 128)
     v = web3.toDecimal(sig.slice(128, 130)) + 27
-    assert.equal(await auctionInstance.isSigned(PARTICIPANT, hashedMessage, v, r, s), true);
-    assert.equal(await auctionInstance.recoverAddr(hashedMessage, v, r, s), PARTICIPANT);
+    assert.equal(await auctionInstance.isSigned(constants.PARTICIPANT_ONE, hashedMessage, v, r, s), true);
+    assert.equal(await auctionInstance.recoverAddr(hashedMessage, v, r, s), constants.PARTICIPANT_ONE);
 
       // certify //
-    await multiCertifierInstance.certify(PARTICIPANT);
+    await multiCertifierInstance.certify(constants.PARTICIPANT_ONE);
 
       // -- Buyin -- //
-    await auctionInstance.buyin(v, r, s, {from:PARTICIPANT, value: NO_BONUS});
-    buyins = await auctionInstance.buyins(PARTICIPANT);
+    await auctionInstance.buyin(v, r, s, {from:constants.PARTICIPANT_ONE, value: NO_BONUS});
+    buyins = await auctionInstance.buyins(constants.PARTICIPANT_ONE);
     increaseTime(END_TIME);
 	});
 
   it('Softcap not met', async () => {
     assert.equal(await auctionInstance.softCapMet(), false);
 
-    let balanceBefore = Number(web3.eth.getBalance(PARTICIPANT));
-    await auctionInstance.claimRefund(PARTICIPANT);
-    assert.equal(Number(web3.eth.getBalance(PARTICIPANT)),balanceBefore+NO_BONUS);
+    let balanceBefore = Number(web3.eth.getBalance(constants.PARTICIPANT_ONE));
+    await auctionInstance.claimRefund(constants.PARTICIPANT_ONE);
+    assert.equal(Number(web3.eth.getBalance(constants.PARTICIPANT_ONE)),balanceBefore+NO_BONUS);
     assert.equal(Number(web3.eth.getBalance(auctionInstance.address)), 0);
   });
 });

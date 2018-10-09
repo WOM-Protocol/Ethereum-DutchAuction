@@ -4,31 +4,16 @@ const CertifierHandler = artifacts.require('./CertifierHandler.sol');
 const ERC20BurnableAndMintable = artifacts.require('./ERC20BurnableAndMintable.sol');
 const TokenVesting = artifacts.require('./TokenVesting.sol');
 
+const constants = require('../global.js');
+
 const increaseTime = addSeconds => {
 	web3.currentProvider.send({jsonrpc: "2.0", method: "evm_increaseTime", params: [addSeconds], id: 0});
 	web3.currentProvider.send({jsonrpc: "2.0", method: "evm_mine", params: [], id: 1});
 }
 
 contract('testAuction.js', function(accounts) {
-  const OWNER = accounts[0];
-	const ADMIN = accounts[1];
-  const TREASURY = accounts[2];
-  const PARTICIPANT1 = accounts[3];
-	const PARTICIPANT2 = accounts[4];
-  const PARTICIPANT3 = accounts[5];
-
-  const TRAILING_DECIMALS = 000000000000000000;
-	const TOKEN_SUPPLY = 1000000000000000000000000000;
-	const AUCTION_CAP = 350000000000000000000000000;
-	const TOKEN_NAME = 'WOMToken';
-	const TOKEN_SYMBOL = 'WOM';
-	const DECIMAL_UNITS = 18;
-
-	const DAY_EPOCH = 86400;
-	const WEEK_EPOCH = DAY_EPOCH*7;
-	const HOUR_EPOCH = DAY_EPOCH/24;
   const BEGIN_TIME = web3.eth.getBlock(web3.eth.blockNumber).timestamp + 1000;
-  const END_TIME = BEGIN_TIME + (15 * DAY_EPOCH);
+  const END_TIME = BEGIN_TIME + (15 * constants.DAY_EPOCH);
 
 	const USDWEI = 4520000000000000; // In WEI at time of testing 26/09/18
 
@@ -41,7 +26,7 @@ contract('testAuction.js', function(accounts) {
 
 	it('Deploy Token', async () => {
 		erc20Instance = await ERC20BurnableAndMintable.new(
-			TOKEN_SUPPLY, TOKEN_NAME, 18, TOKEN_SYMBOL);
+			constants.TOKEN_SUPPLY, constants.TOKEN_NAME, 18, constants.TOKEN_SYMBOL);
 	});
 
 	it('Deply MultiCertifier', async () => {
@@ -57,10 +42,10 @@ contract('testAuction.js', function(accounts) {
 			multiCertifierInstance.address,
 			erc20Instance.address,
 			tokenVestingInstance.address,
-			TREASURY,
-			ADMIN,
+			constants.TREASURY,
+			constants.ADMIN,
 			BEGIN_TIME,
-			AUCTION_CAP);
+			constants.AUCTION_CAP);
 	});
 
   it('Ensure not started', async () => {
@@ -95,8 +80,8 @@ contract('testAuction.js', function(accounts) {
 		assert.equal(false, await auctionInstance.softCapMet(), 'soft cap not met');
 		// assert.equal(web3.eth.getBlock(web3.eth.blockNumber).timestamp, parseInt(await auctionInstance.currentTime()), 'current time'); // Test sometimes fails with 1 second deviation
 		assert.equal(USDWEI, Number(await auctionInstance.currentPrice()), 'Current price 1$');
-		assert.equal(AUCTION_CAP, await auctionInstance.tokensAvailable(), 'full tokens available');
-		assert.equal(AUCTION_CAP*USDWEI, await auctionInstance.maxPurchase(), 'all tokens available for purchase');
+		assert.equal(constants.AUCTION_CAP, await auctionInstance.tokensAvailable(), 'full tokens available');
+		assert.equal(constants.AUCTION_CAP*USDWEI, await auctionInstance.maxPurchase(), 'all tokens available for purchase');
 		assert.equal(20, await auctionInstance.currentBonus(), 'Current bonus');
 		assert.equal(20, await auctionInstance.bonus(100), 'Bonus added correctly');
 		let theDealRes = await auctionInstance.theDeal(100);
