@@ -5,7 +5,7 @@ import '../Libraries/Ownable.sol';
 
 /// Stripped down ERC20 standard token interface.
 contract Token {
-	function transfer(address _to, uint256 _value) public returns (bool success);
+	function transferFrom(address _from, address _to, uint _amount) public returns (bool success);
 	function approveAndCall(address _spender, uint _amount, bytes _data) public returns (bool success);
 }
 
@@ -19,22 +19,23 @@ contract TokenVesting is Ownable {
     mapping (address => Account) public users;
 
     address public tokenAddress;
+		address public auctionAddress;
 
     Token public tokenContract;
 
 		uint256 public monthEpoch = 2629743;
 
     struct Account {
-      uint256 start;
-      uint256 duration;
-			uint256 cliffReleasePercentage;
-			uint256 cliffReleaseAmount;
-      uint256 paymentPerMonth;
-      uint256 unreleased;
-      uint256 released;
-      uint256 total;
-			uint256 monthCount;
-      bool cliffReleased;
+      uint256 start;										// 0
+      uint256 duration;									// 1
+			uint256 cliffReleasePercentage;		// 2
+			uint256 cliffReleaseAmount;				// 3
+      uint256 paymentPerMonth;					// 4
+      uint256 unreleased;								// 5
+      uint256 released;									// 6
+      uint256 total;										// 7
+			uint256 monthCount;								// 8
+      bool cliffReleased;								// 9
     }
 
     // Validate that this is the true token contract
@@ -45,6 +46,11 @@ contract TokenVesting is Ownable {
       tokenAddress = _tokenWOM;
       tokenContract = Token(_tokenWOM);
     }
+
+		function assignAuctionAddress(address _auctionAddress) public only_owner returns(bool){
+			auctionAddress = _auctionAddress;
+			return true;
+		}
 
     /*
        * @param _start the time (as Unix time) at which point vesting starts
@@ -102,46 +108,50 @@ contract TokenVesting is Ownable {
     isRegistered(msg.sender)
     public
     payable
-    returns (uint256) {
-      uint256 currentBalance = users[msg.sender].unreleased;
+    returns (bool) {
+			uint256 currentBalance = users[msg.sender].unreleased;
       uint256 start = users[msg.sender].start;
       uint256 duration = users[msg.sender].duration;
       uint256 paymentPerMonth = users[msg.sender].paymentPerMonth;
       uint256 monthCount = users[msg.sender].monthCount;
 
-      if (now < start) {
-        return 0;
-      }
-      else if (now >= start.add(duration)) {
+			require(now >= start);
+      if (now >= start.add(duration)) {
         users[msg.sender].released += currentBalance;
 				users[msg.sender].unreleased = 0;
-        tokenContract.transfer(msg.sender, currentBalance);
+        tokenContract.transferFrom(auctionAddress, msg.sender, currentBalance);
         delete users[msg.sender];
-        return currentBalance;
+        return true;
       }
-      else if(now >= start){
-
-        if(users[msg.sender].cliffReleased){
-
-          if(now >= start.add(monthCount.mul(monthEpoch))) {
+      if(users[msg.sender].cliffReleased){
+				// What if they haven't checked each month for their release?
+        if(now >= start.add(monthCount.mul(monthEpoch))) {
             users[msg.sender].released += paymentPerMonth;
 						users[msg.sender].unreleased -= paymentPerMonth;
             users[msg.sender].monthCount += 1;
-            tokenContract.transfer(msg.sender, paymentPerMonth);
-            return users[msg.sender].paymentPerMonth;
+            tokenContract.transferFrom(auctionAddress, msg.sender, paymentPerMonth);
+            return true;
           }
         }
         else{
-          users[msg.sender].released += users[msg.sender].cliffReleaseAmount;
-					users[msg.sender].unreleased -= users[msg.sender].cliffReleaseAmount;
+					uint releaseAmount = users[msg.sender].cliffReleaseAmount;
+          users[msg.sender].released += releaseAmount;
+					users[msg.sender].unreleased -= releaseAmount;
           users[msg.sender].cliffReleased = true;
 					users[msg.sender].monthCount = 1;
-          tokenContract.transfer(msg.sender, users[msg.sender].cliffReleaseAmount);
-          delete users[msg.sender].cliffReleaseAmount;
-          return 0; // Return % of the cliff
+          tokenContract.transferFrom(auctionAddress, msg.sender, releaseAmount);
+          return true;
         }
       }
-    }
+
+		function getTimeNow() public view returns(uint){
+			return now;
+		}
+
+/*		function timeTillNextRelease() public view returns(uint){
+			return
+		}
+		*/
 
     function bytesToAddress(bytes bys)
     private
