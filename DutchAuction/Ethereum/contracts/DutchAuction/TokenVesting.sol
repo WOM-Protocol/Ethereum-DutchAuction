@@ -7,6 +7,7 @@ import '../Libraries/Ownable.sol';
 contract Token {
 	function transferFrom(address _from, address _to, uint _amount) public returns (bool success);
 	function approveAndCall(address _spender, uint _amount, bytes _data) public returns (bool success);
+  function allowance(address _tokenHolder, address _spender) public view returns (uint remaining);
 }
 
 contract ApproveAndCallFallBack {
@@ -24,6 +25,7 @@ contract TokenVesting is Ownable {
     Token public tokenContract;
 
 		uint256 public monthEpoch = 2629743;
+    bool public locked;
 
     struct Account {
       uint256 start;										// 0
@@ -52,6 +54,10 @@ contract TokenVesting is Ownable {
 			return true;
 		}
 
+    function setLock(bool _lock) public only_owner returns(bool){
+      locked = _lock;
+      return true;
+    }
 
     function registerPresaleVest(
       address _who,
@@ -60,6 +66,7 @@ contract TokenVesting is Ownable {
 			uint256 _cliffReleasePercentage
       )
       public
+      notLocked
       only_owner
       notEmptyUint(_start)
       notEmptyUint(_duration)
@@ -103,6 +110,7 @@ contract TokenVesting is Ownable {
 
     // TODO; ensure value is less than given amount
     function release()
+    notLocked
     isRegistered(msg.sender)
     public
     payable
@@ -139,7 +147,13 @@ contract TokenVesting is Ownable {
         tokenContract.transferFrom(auctionAddress, msg.sender, releaseAmount);
         return true;
       }
-      }
+    }
+
+    function emergencyDrain(address _emergencyAddress) public only_owner isLocked returns(bool){
+      uint256 balanceOf = tokenContract.allowance(auctionAddress, this);
+      tokenContract.transferFrom(auctionAddress, _emergencyAddress, balanceOf);
+      return true;
+    }
 
 		function fullDurationMet() public view returns(bool){
 			return now > users[msg.sender].start + users[msg.sender].duration;
@@ -158,6 +172,8 @@ contract TokenVesting is Ownable {
     modifier notRegistered(address _who) { require (users[_who].start == 0); _; }
     modifier notEmptyAddress(address _who) { require (_who != address(0)); _; }
     modifier notEmptyUint(uint _uint) { require (_uint != 0); _; }
+    modifier notLocked() { require (!locked); _; }
+    modifier isLocked() { require (locked); _; }
 
     event Registration(address indexed who, uint indexed cliff, uint indexed duration);
     event TokensRecieved(address indexed who, uint indexed amount, uint indexed timestamp);
