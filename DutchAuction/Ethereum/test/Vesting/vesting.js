@@ -176,14 +176,30 @@ contract('vesting.js', function(accounts) {
 	});
 
 	it('Release tokens - month by month', async	 () => {
+		increaseTime(MONTH_EPOCH);
+		await tokenVestingInstance.release({from:PRESALE_PARTICIPANT});
+		let users = await tokenVestingInstance.users(PRESALE_PARTICIPANT);
+		let balanceOf = Number(await erc20Instance.balanceOf(PRESALE_PARTICIPANT));
+		let releasedAmount = Number(users[3]) + Number(users[4]);
+		let range = Number(10000000000);
 
-	});
+		/* Solidity range sometimes off, but not major  */
+		assert.equal(balanceOf, releasedAmount + range);
 
-	it('Release tokens - no cliff just wait till full period is done', async	 () => {
-
+		assert.equal(Number(users[5]), Number(users[7]) - Number(users[3]) - Number(users[4]));
+		assert.equal(Number(users[6]), Number(users[3]) + Number(users[4]) + range);
+		assert.equal(Number(users[8]), 2);
 	});
 
 	it('Release tokens - cliff then 5 months in', async	 () => {
+		let user = await tokenVestingInstance.users(PRESALE_PARTICIPANT);
+		let totalRequired = Number(user[7]);
+		increaseTime(YEAR_EPOCH);
+		assert.equal(await tokenVestingInstance.fullDurationMet(), true);
 
+		await tokenVestingInstance.release({from:PRESALE_PARTICIPANT});
+		assert.equal(Number(await erc20Instance.balanceOf(PRESALE_PARTICIPANT)), totalRequired);
+		let presaleBalance = Number(await erc20Instance.allowance(auctionInstance.address, tokenVestingInstance.address));
+		assert.equal(presaleBalance, 0);
 	});
 });

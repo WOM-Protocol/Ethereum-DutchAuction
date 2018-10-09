@@ -52,11 +52,7 @@ contract TokenVesting is Ownable {
 			return true;
 		}
 
-    /*
-       * @param _start the time (as Unix time) at which point vesting starts
-       * @param _duration duration in seconds of the period in which the tokens will vest
-       * @para whether the vesting is revocable or not
-       */
+
     function registerPresaleVest(
       address _who,
       uint256 _start,
@@ -79,18 +75,20 @@ contract TokenVesting is Ownable {
       return true;
     }
 
-		function returnsCliffReleaseAmount(address _user, uint256 _amount) public view returns(uint256){
+		/*function returnsCliffReleaseAmount(address _user, uint256 _amount) public view returns(uint256){
 			return	_amount * users[_user].cliffReleasePercentage / 100;
 		}
 
 		function returnPaymentPerMonth(address _user, uint256 _amount, uint256 _duration, uint256 _epoch) public view returns(uint256){
 			return _amount.sub(returnsCliffReleaseAmount(_user, _amount)).div(_duration.div(_epoch));
-		}
+		}*/
 
     function receiveApproval(address from, uint tokens, address token, bytes data)
     public {
       require(data.length == 20);
       require(msg.sender == tokenAddress);
+			require(from == auctionAddress);
+			require(token == tokenAddress);
       address _address = bytesToAddress(data);
       uint256 duration = users[_address].duration;
 			uint256 cliffReleaseAmount = tokens * users[_address].cliffReleasePercentage / 100;
@@ -125,33 +123,27 @@ contract TokenVesting is Ownable {
       }
       if(users[msg.sender].cliffReleased){
 				// What if they haven't checked each month for their release?
-        if(now >= start.add(monthCount.mul(monthEpoch))) {
-            users[msg.sender].released += paymentPerMonth;
-						users[msg.sender].unreleased -= paymentPerMonth;
-            users[msg.sender].monthCount += 1;
-            tokenContract.transferFrom(auctionAddress, msg.sender, paymentPerMonth);
-            return true;
-          }
-        }
-        else{
-					uint releaseAmount = users[msg.sender].cliffReleaseAmount;
-          users[msg.sender].released += releaseAmount;
-					users[msg.sender].unreleased -= releaseAmount;
-          users[msg.sender].cliffReleased = true;
-					users[msg.sender].monthCount = 1;
-          tokenContract.transferFrom(auctionAddress, msg.sender, releaseAmount);
-          return true;
-        }
+        require(now >= start.add(monthCount.mul(monthEpoch)));
+        users[msg.sender].released += paymentPerMonth;
+				users[msg.sender].unreleased -= paymentPerMonth;
+        users[msg.sender].monthCount += 1;
+        tokenContract.transferFrom(auctionAddress, msg.sender, paymentPerMonth);
+        return true;
+      }
+      else{
+				uint releaseAmount = users[msg.sender].cliffReleaseAmount;
+        users[msg.sender].released += releaseAmount;
+				users[msg.sender].unreleased -= releaseAmount;
+        users[msg.sender].cliffReleased = true;
+				users[msg.sender].monthCount = 1;
+        tokenContract.transferFrom(auctionAddress, msg.sender, releaseAmount);
+        return true;
+      }
       }
 
-		function getTimeNow() public view returns(uint){
-			return now;
+		function fullDurationMet() public view returns(bool){
+			return now > users[msg.sender].start + users[msg.sender].duration;
 		}
-
-/*		function timeTillNextRelease() public view returns(uint){
-			return
-		}
-		*/
 
     function bytesToAddress(bytes bys)
     private
@@ -166,7 +158,6 @@ contract TokenVesting is Ownable {
     modifier notRegistered(address _who) { require (users[_who].start == 0); _; }
     modifier notEmptyAddress(address _who) { require (_who != address(0)); _; }
     modifier notEmptyUint(uint _uint) { require (_uint != 0); _; }
-    modifier notEmptyBytes(bytes _data) { require(_data.length != 0); _; }
 
     event Registration(address indexed who, uint indexed cliff, uint indexed duration);
     event TokensRecieved(address indexed who, uint indexed amount, uint indexed timestamp);

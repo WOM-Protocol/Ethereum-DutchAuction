@@ -328,16 +328,16 @@ contract SecondPriceAuction {
 	function softCapMet() public constant returns (bool) { return totalReceived >= USDWEI_SOFT_CAP; }
 
 	/// Recover address from signature
-	function recoverAddr(bytes32 msgHash, uint8 v, bytes32 r, bytes32 s) public constant returns (address) {
+	function recoverAddr(bytes32 msgHash, uint8 v, bytes32 r, bytes32 s) public pure returns (address) {
 			bytes memory prefix = "\x19Ethereum Signed Message:\n32";
-			bytes32 prefixedHash = keccak256(prefix, msgHash);
+			bytes32 prefixedHash = keccak256(abi.encodePacked(prefix, msgHash));
 			return ecrecover(prefixedHash, v, r, s);
 	}
 
 	/// Check if signature has been signed by passed in address
 	function isSigned(address _addr, bytes32 msgHash, uint8 v, bytes32 r, bytes32 s) public pure returns (bool) {
 			bytes memory prefix = "\x19Ethereum Signed Message:\n32";
-			bytes32 prefixedHash = keccak256(prefix, msgHash);
+			bytes32 prefixedHash = keccak256(abi.encodePacked(prefix, msgHash));
 			return ecrecover(prefixedHash, v, r, s) == _addr;
 	}
 
