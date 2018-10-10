@@ -4,15 +4,14 @@ const CertifierHandler = artifacts.require('./CertifierHandler.sol');
 const ERC20BurnableAndMintable = artifacts.require('./ERC20BurnableAndMintable.sol');
 const TokenVesting = artifacts.require('./TokenVesting.sol');
 const Ownable = artifacts.require('./Ownable.sol');
-const constants = require('./global.js');
+const constants = require('../helpers/global.js');
 
 contract('Full Deployment Test', function(accounts) {
-	const BEGIN_TIME = web3.eth.getBlock(web3.eth.blockNumber).timestamp;
-
+	const END_TIME = constants.BEGIN_TIME + (15 * constants.DAY_EPOCH);
 
   describe('Ownable Contract', () => {
     it('deploys', async () => {
-      this.ownableInstance = await Ownable.new({from:constants.OWNER});
+      this.ownableInstance = await Ownable.deployed();
     });
 
     it('initial assignment correct', async () => {
@@ -22,8 +21,7 @@ contract('Full Deployment Test', function(accounts) {
 
   describe('Token Contract', () => {
     it('deploys', async () => {
-      this.erc20Instance =  await ERC20BurnableAndMintable.new(
-  			constants.TOKEN_SUPPLY, constants.TOKEN_NAME, 18, constants.TOKEN_SYMBOL);
+      this.erc20Instance =  await ERC20BurnableAndMintable.deployed();
     });
 
     it('assignment correct', async () => {
@@ -39,14 +37,14 @@ contract('Full Deployment Test', function(accounts) {
 
   describe('MultiCertifier Contract', () => {
     it('deploys', async () => {
-      this.multiCertifierInstance = await MultiCertifier.new();
+      this.multiCertifierInstance = await MultiCertifier.deployed();
     });
   });
 
 
   describe('MultiCertifier Contract', () => {
     it('deploys', async () => {
-      this.certifierHandlerInstance = await CertifierHandler.new(this.multiCertifierInstance.address, constants.TREASURY);
+      this.certifierHandlerInstance = await CertifierHandler.deployed(0)
     });
 
     it('initial assignment correct', async () => {
@@ -57,7 +55,7 @@ contract('Full Deployment Test', function(accounts) {
 
   describe('TokenVesting Contract', () => {
     it('deploys', async () => {
-      this.tokenVestingInstance = await TokenVesting.new(this.erc20Instance.address);
+      this.tokenVestingInstance = await TokenVesting.deployed()
     });
 
     it('initial assignment correct', async () => {
@@ -68,26 +66,18 @@ contract('Full Deployment Test', function(accounts) {
 
   describe('SecondPriceAuction Contract', () => {
     it('deploys', async () => {
-      this.auctionInstance = await SecondPriceAuction.new(
-  			this.multiCertifierInstance.address,
-  			this.erc20Instance.address,
-  			this.tokenVestingInstance.address,
-  			constants.TREASURY,
-  			constants.ADMIN,
-  			BEGIN_TIME,
-  			constants.AUCTION_CAP);
+      this.auctionInstance = await SecondPriceAuction.deployed();
     });
 
     it('initial assignment correct', async () => {
-      let endTime = BEGIN_TIME + (15 * constants.DAY_EPOCH);
   		assert.equal(await this.auctionInstance.certifier(), this.multiCertifierInstance.address, 'MultiCertifier address set');
   		assert.equal(await this.auctionInstance.tokenContract(), this.erc20Instance.address, 'Token address set');
   		assert.equal(await this.auctionInstance.tokenVesting(), this.tokenVestingInstance.address, 'Token vesting address set');
   		assert.equal(await this.auctionInstance.treasury(), constants.TREASURY, 'Treasury address set');
   		assert.equal(await this.auctionInstance.admin(), constants.ADMIN, 'Admin address set');
-  		assert.equal(await this.auctionInstance.beginTime(), BEGIN_TIME, 'Begin time set');
+  		assert.equal(await this.auctionInstance.beginTime(), constants.BEGIN_TIME, 'Begin time set');
   		assert.equal(await this.auctionInstance.tokenCap(), constants.AUCTION_CAP, 'Auction cap set');
-  		assert.equal(await this.auctionInstance.endTime(), endTime, 'End time set');
+  		assert.equal(await this.auctionInstance.endTime(), END_TIME, 'End time set');
     });
   });
 });
