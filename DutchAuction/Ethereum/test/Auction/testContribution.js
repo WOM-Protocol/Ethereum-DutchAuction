@@ -4,8 +4,10 @@ const SecondPriceAuction = artifacts.require('./SecondPriceAuction.sol');
 const MultiCertifier = artifacts.require('./MultiCertifier.sol');
 const ERC20BurnableAndMintable = artifacts.require('./ERC20BurnableAndMintable.sol');
 const TokenVesting = artifacts.require('./TokenVesting.sol');
+
 const AssertRevert = require('../../helpers/AssertRevert.js');
 const constants = require('../global.js');
+const aConstants = require('./auctionGlobals.js');
 
 const increaseTime = addSeconds => {
 	web3.currentProvider.send({jsonrpc: "2.0", method: "evm_increaseTime", params: [addSeconds], id: 0});
@@ -13,192 +15,192 @@ const increaseTime = addSeconds => {
 }
 
 contract('testContribution.js', function(accounts) {
-
   const BEGIN_TIME = web3.eth.getBlock(web3.eth.blockNumber).timestamp + 1000;
 	const END_TIME = (15 * constants.DAY_EPOCH);
 
-	const USDWEI = 4520000000000000; // In WEI at time of testing 26/09/18
-	const TLCS = 'This is an example terms and conditions.';
-	const DUST = 4000000000000000;
+	describe('Deployment', () => {
+		it('ERC20BurnableAndMintable', async () => {
+			this.erc20Instance = await ERC20BurnableAndMintable.new(
+				constants.TOKEN_SUPPLY, constants.TOKEN_NAME, 18, constants.TOKEN_SYMBOL);
+		});
 
-	const BONUS_20 = 1000000000000000000*1.2;
-	const BONUS_15 = 1000000000000000000*1.15;
-	const BONUS_10 = 1000000000000000000*1.1;
-	const BONUS_5 = 1000000000000000000*1.05;
-	const NO_BONUS = 1000000000000000000;
+		it('MultiCertifier', async () => {
+			this.multiCertifierInstance = await MultiCertifier.new();
+		});
 
-	let hashedMessage;
-	let r;
-	let s;
-	let v;
-	let vDecimal;
+		it('TokenVesting', async () => {
+			this.tokenVestingInstance = await TokenVesting.new(this.erc20Instance.address);
+		});
 
-	let certifierHandlerInstance;
-	let multiCertifierInstance;
-	let auctionInstance;
-	let erc20Instance;
-  let tokenVestingInstance;
-
-	it('Deploy Token', async () => {
-		erc20Instance = await ERC20BurnableAndMintable.new(
-			constants.TOKEN_SUPPLY, constants.TOKEN_NAME, 18, constants.TOKEN_SYMBOL);
+		it('SecondPriceAuction', async () => {
+			this.auctionInstance = await SecondPriceAuction.new(
+				this.multiCertifierInstance.address,
+				this.erc20Instance.address,
+				this.tokenVestingInstance.address,
+				constants.TREASURY,
+				constants.ADMIN,
+				BEGIN_TIME,
+				constants.AUCTION_CAP);
+		});
 	});
 
-	it('Deply MultiCertifier', async () => {
-		multiCertifierInstance = await MultiCertifier.new();
+	describe('function - buyin()', () => {
+		it('sign message for buyin from PARTICIPANT_ONE', async () => {
+			const message = 'TLCS.'
+			hashedMessage = web3.sha3(message)
+			assert.equal(await this.auctionInstance.STATEMENT_HASH(), hashedMessage);
+			var sig = await web3.eth.sign(constants.PARTICIPANT_ONE, hashedMessage).slice(2)
+			this.r = '0x' + sig.slice(0, 64)
+			this.s = '0x' + sig.slice(64, 128)
+			this.v = web3.toDecimal(sig.slice(128, 130)) + 27
+			assert.equal(await this.auctionInstance.isSigned(constants.PARTICIPANT_ONE, hashedMessage, this.v, this.r, this.s), true);
+			assert.equal(await this.auctionInstance.recoverAddr(hashedMessage, this.v, this.r, this.s), constants.PARTICIPANT_ONE);
+		});
+
+		it('catch when_not_halted modifier', async () => {
+			await this.auctionInstance.setHalted(true, {from:constants.ADMIN});
+			assert.equal(await this.auctionInstance.halted(), true);
+			let when_not_halted = this.auctionInstance.buyin(this.v, this.r, this.s, {from:constants.PARTICIPANT_ONE, value: 5000000000000000});
+			AssertRevert.assertRevert(when_not_halted);
+			await this.auctionInstance.setHalted(false, {from:constants.ADMIN});
+			assert.equal(await this.auctionInstance.halted(), false);
+		});
+
+		it('catch not_pre_sale_member modifier', async () => {
+			await this.auctionInstance.inject(constants.PARTICIPANT_ONE, 10000, 10, {from:constants.ADMIN});
+			let buyinsUser = await this.auctionInstance.buyins(constants.PARTICIPANT_ONE);
+			assert.equal(buyinsUser[2], true);
+			let not_pre_sale_member = this.auctionInstance.buyin(this.v, this.r, this.s, {from:constants.PARTICIPANT_ONE, value: 5000000000000000});
+			AssertRevert.assertRevert(not_pre_sale_member);
+			await this.auctionInstance.uninject(constants.PARTICIPANT_ONE, {from:constants.ADMIN});
+			buyinsUser = await this.auctionInstance.buyins(constants.PARTICIPANT_ONE);
+			assert.equal(buyinsUser[2], false);
+		});
+
+		it('catch when_active modifier', async () => {
+			assert.equal(await this.auctionInstance.isActive(), false);
+			let when_active = this.auctionInstance.buyin(this.v, this.r, this.s, {from:constants.PARTICIPANT_ONE, value: 5000000000000000});
+			AssertRevert.assertRevert(when_active);
+		});
+
+		it('increase time so auction starts', async () => {
+			increaseTime(1000);
+			assert.equal(Number(await this.auctionInstance.currentPrice()), aConstants.USDWEI);
+		});
+
+		it('catch only_eligible modifier', async () => {
+			let only_eligible_recoverAddr = this.auctionInstance.buyin(this.v+1, this.r, this.s, {from:constants.PARTICIPANT_ONE, value: 5000000000000000});
+			AssertRevert.assertRevert(only_eligible_recoverAddr);
+		});
+
+		it('catch only_eligible recoverAddr() modifier', async () => {
+			let only_eligible_recoverAddr = this.auctionInstance.buyin(this.v+1, this.r, this.s, {from:constants.PARTICIPANT_ONE, value: 5000000000000000});
+			AssertRevert.assertRevert(only_eligible_recoverAddr);
+		});
+
+		it('catch only_eligible certified() modifier', async () => {
+			let only_eligible_certified = this.auctionInstance.buyin(this.v, this.r, this.s, {from:constants.PARTICIPANT_ONE, value: 5000000000000000});
+			AssertRevert.assertRevert(only_eligible_certified);
+			await this.multiCertifierInstance.certify(constants.PARTICIPANT_ONE);
+			let certs = await this.multiCertifierInstance.certs(constants.PARTICIPANT_ONE);
+			assert.equal(certs[1], true);
+		});
+
+		it('catch only_eligible dust() modifier', async () => {
+			let only_eligible_dust = this.auctionInstance.buyin(this.v, this.r, this.s, {from:constants.PARTICIPANT_ONE, value: this.DUST});
+			AssertRevert.assertRevert(only_eligible_dust);
+		});
+
+		it('function eligibleCall()', async () => {
+			assert.equal(await this.auctionInstance.eligibleCall(constants.PARTICIPANT_ONE, this.v, this.r, this.s), true);
+		});
+
+
 	});
 
-  it('Deploy Token Vesting', async () => {
-		tokenVestingInstance = await TokenVesting.new(erc20Instance.address);
-	});
+	describe('function buyin() bonus rounds', () => {
+		it('20% bonus effective', async () => {
+			await this.auctionInstance.buyin(this.v, this.r, this.s, {from:constants.PARTICIPANT_ONE, value: aConstants.NO_BONUS});
+			buyins = await this.auctionInstance.buyins(constants.PARTICIPANT_ONE);
+			assert.equal(Number(buyins[0]), aConstants.BONUS_20, 'user buyins accounted upated');
+			assert.equal(Number(buyins[1]), aConstants.NO_BONUS, 'user buyins received upated');
+			assert.equal(Number(await this.auctionInstance.totalAccounted()), aConstants.BONUS_20, 'total accounted updated');
+			assert.equal(Number(await this.auctionInstance.totalReceived()), aConstants.NO_BONUS, 'total receieved updated');
+		});
 
-	it('Deploy && Start SecondPriceAuction', async () => {
-		auctionInstance = await SecondPriceAuction.new(
-			multiCertifierInstance.address,
-			erc20Instance.address,
-			tokenVestingInstance.address,
-			constants.TREASURY,
-			constants.ADMIN,
-			BEGIN_TIME,
-			constants.AUCTION_CAP);
-	});
-
-  it('Sign statement hash', async () => {
-		const message = 'TLCS.'
-		hashedMessage = web3.sha3(message)
-		assert.equal(await auctionInstance.STATEMENT_HASH(), hashedMessage);
-		var sig = await web3.eth.sign(constants.PARTICIPANT_ONE, hashedMessage).slice(2)
-		r = '0x' + sig.slice(0, 64)
-		s = '0x' + sig.slice(64, 128)
-		v = web3.toDecimal(sig.slice(128, 130)) + 27
-		assert.equal(await auctionInstance.isSigned(constants.PARTICIPANT_ONE, hashedMessage, v, r, s), true);
-		assert.equal(await auctionInstance.recoverAddr(hashedMessage, v, r, s), constants.PARTICIPANT_ONE);
-	});
-
-
-
-	it('Purchase', async () => {
-		/* ---- when_not_halted ---- */
-		await auctionInstance.setHalted(true, {from:constants.ADMIN});
-		assert.equal(await auctionInstance.halted(), true);
-		let when_not_halted = auctionInstance.buyin(v, r, s, {from:constants.PARTICIPANT_ONE, value: 5000000000000000});
-		AssertRevert.assertRevert(when_not_halted);
-
-		/* ---- remove hault ---- */
-		await auctionInstance.setHalted(false, {from:constants.ADMIN});
-		assert.equal(await auctionInstance.halted(), false);
-
-
-		/* ---- not_pre_sale_member ---- */
-		await auctionInstance.inject(constants.PARTICIPANT_ONE, 10000, 10, {from:constants.ADMIN});
-		let buyinsUser = await auctionInstance.buyins(constants.PARTICIPANT_ONE);
-		assert.equal(buyinsUser[2], true);
-		let not_pre_sale_member = auctionInstance.buyin(v, r, s, {from:constants.PARTICIPANT_ONE, value: 5000000000000000});
-		AssertRevert.assertRevert(not_pre_sale_member);
-		await auctionInstance.uninject(constants.PARTICIPANT_ONE, {from:constants.ADMIN});
-		buyinsUser = await auctionInstance.buyins(constants.PARTICIPANT_ONE);
-		assert.equal(buyinsUser[2], false);
-
-		/* ---- when_active ---- */
-		assert.equal(await auctionInstance.isActive(), false);
-		let when_active = auctionInstance.buyin(v, r, s, {from:constants.PARTICIPANT_ONE, value: 5000000000000000});
-		AssertRevert.assertRevert(when_active);
-
-		increaseTime(1000);
-		assert.equal(Number(await auctionInstance.currentPrice()), USDWEI);
-
-		/* ---- only_eligible ---- */
-		let only_eligible_recoverAddr = auctionInstance.buyin(v+1, r, s, {from:constants.PARTICIPANT_ONE, value: 5000000000000000});
-		AssertRevert.assertRevert(only_eligible_recoverAddr);
-
-		let only_eligible_certified = auctionInstance.buyin(v, r, s, {from:constants.PARTICIPANT_ONE, value: 5000000000000000});
-		AssertRevert.assertRevert(only_eligible_certified);
-		await multiCertifierInstance.certify(constants.PARTICIPANT_ONE);
-		let certs = await multiCertifierInstance.certs(constants.PARTICIPANT_ONE);
-		assert.equal(certs[1], true);
-
-		let only_eligible_dust = auctionInstance.buyin(v, r, s, {from:constants.PARTICIPANT_ONE, value: DUST});
-		AssertRevert.assertRevert(only_eligible_dust);
-
-		assert.equal(await auctionInstance.eligibleCall(constants.PARTICIPANT_ONE, v, r, s), true);
-
-		/* ---- 20% bonus ---- */
-		await auctionInstance.buyin(v, r, s, {from:constants.PARTICIPANT_ONE, value: NO_BONUS});
-		buyins = await auctionInstance.buyins(constants.PARTICIPANT_ONE);
-		assert.equal(Number(buyins[0]), BONUS_20, 'user buyins accounted upated');
-		assert.equal(Number(buyins[1]), NO_BONUS, 'user buyins received upated');
-		assert.equal(Number(await auctionInstance.totalAccounted()), BONUS_20, 'total accounted updated');
-		assert.equal(Number(await auctionInstance.totalReceived()), NO_BONUS, 'total receieved updated');
-	});
-
-	it('Purchase bonuses', async () => {
-			/* ---- 15% bonus ---- */
+		it('15% bonus effective', async () => {
 			increaseTime(constants.DAY_EPOCH);
-			await auctionInstance.buyin(v, r, s, {from:constants.PARTICIPANT_ONE, value: NO_BONUS});
-			assert.equal(Number(await auctionInstance.currentBonus()), 15);
-			assert.equal(Number(await auctionInstance.currentBonusRound()), 2, 'bonus round updated');
-			let buyins = await auctionInstance.buyins(constants.PARTICIPANT_ONE);
-			assert.equal(Number(buyins[0]), BONUS_20+BONUS_15, 'user buyins accounted upated');
-			assert.equal(Number(buyins[1]), NO_BONUS*2, 'user buyins received upated');
-			assert.equal(Number(await auctionInstance.totalAccounted()), BONUS_20+BONUS_15, 'total accounted updated');
-			assert.equal(Number(await auctionInstance.totalReceived()), NO_BONUS*2, 'total receieved updated');
+			await this.auctionInstance.buyin(this.v, this.r, this.s, {from:constants.PARTICIPANT_ONE, value: aConstants.NO_BONUS});
+			assert.equal(Number(await this.auctionInstance.currentBonus()), 15);
+			assert.equal(Number(await this.auctionInstance.currentBonusRound()), 2, 'bonus round updated');
+			let buyins = await this.auctionInstance.buyins(constants.PARTICIPANT_ONE);
+			assert.equal(Number(buyins[0]), aConstants.BONUS_20+aConstants.BONUS_15, 'user buyins accounted upated');
+			assert.equal(Number(buyins[1]), aConstants.NO_BONUS*2, 'user buyins received upated');
+			assert.equal(Number(await this.auctionInstance.totalAccounted()), aConstants.BONUS_20+aConstants.BONUS_15, 'total accounted updated');
+			assert.equal(Number(await this.auctionInstance.totalReceived()), aConstants.NO_BONUS*2, 'total receieved updated');
+		});
 
-			/* ---- 10% bonus ---- */
+		it('10% bonus effective', async () => {
 			increaseTime(constants.DAY_EPOCH);
-			await auctionInstance.buyin(v, r, s, {from:constants.PARTICIPANT_ONE, value: NO_BONUS});
-			assert.equal(Number(await auctionInstance.currentBonus()), 10);
-			assert.equal(Number(await auctionInstance.currentBonusRound()), 3, 'bonus round updated');
-			buyins = await auctionInstance.buyins(constants.PARTICIPANT_ONE);
-			assert.equal(Number(buyins[0]), BONUS_20+BONUS_15+BONUS_10, 'user buyins accounted upated');
-			assert.equal(Number(buyins[1]), NO_BONUS*3, 'user buyins received upated');
-			assert.equal(Number(await auctionInstance.totalAccounted()), BONUS_20+BONUS_15+BONUS_10, 'total accounted updated');
-			assert.equal(Number(await auctionInstance.totalReceived()), NO_BONUS*3, 'total receieved updated');
+			await this.auctionInstance.buyin(this.v, this.r, this.s, {from:constants.PARTICIPANT_ONE, value: aConstants.NO_BONUS});
+			assert.equal(Number(await this.auctionInstance.currentBonus()), 10);
+			assert.equal(Number(await this.auctionInstance.currentBonusRound()), 3, 'bonus round updated');
+			buyins = await this.auctionInstance.buyins(constants.PARTICIPANT_ONE);
+			assert.equal(Number(buyins[0]), aConstants.BONUS_20+aConstants.BONUS_15+aConstants.BONUS_10, 'user buyins accounted upated');
+			assert.equal(Number(buyins[1]), aConstants.NO_BONUS*3, 'user buyins received upated');
+			assert.equal(Number(await this.auctionInstance.totalAccounted()), aConstants.BONUS_20+aConstants.BONUS_15+aConstants.BONUS_10, 'total accounted updated');
+			assert.equal(Number(await this.auctionInstance.totalReceived()), aConstants.NO_BONUS*3, 'total receieved updated');
+		});
 
-			/* ---- 5% bonus ---- */
+		it('5% bonus effective', async () => {
 			increaseTime(constants.DAY_EPOCH);
-			await auctionInstance.buyin(v, r, s, {from:constants.PARTICIPANT_ONE, value: NO_BONUS});
-			assert.equal(Number(await auctionInstance.currentBonus()), 5);
-			assert.equal(Number(await auctionInstance.currentBonusRound()), 4, 'bonus round updated');
-			buyins = await auctionInstance.buyins(constants.PARTICIPANT_ONE);
-			assert.equal(Number(buyins[0]), BONUS_20+BONUS_15+BONUS_10+BONUS_5, 'user buyins accounted upated');
-			assert.equal(Number(buyins[1]), NO_BONUS*4, 'user buyins received upated');
-			assert.equal(Number(await auctionInstance.totalAccounted()), BONUS_20+BONUS_15+BONUS_10+BONUS_5, 'total accounted updated');
-			assert.equal(Number(await auctionInstance.totalReceived()), NO_BONUS*4, 'total receieved updated');
+			await this.auctionInstance.buyin(this.v, this.r, this.s, {from:constants.PARTICIPANT_ONE, value: aConstants.NO_BONUS});
+			assert.equal(Number(await this.auctionInstance.currentBonus()), 5);
+			assert.equal(Number(await this.auctionInstance.currentBonusRound()), 4, 'bonus round updated');
+			buyins = await this.auctionInstance.buyins(constants.PARTICIPANT_ONE);
+			assert.equal(Number(buyins[0]), aConstants.BONUS_20+aConstants.BONUS_15+aConstants.BONUS_10+aConstants.BONUS_5, 'user buyins accounted upated');
+			assert.equal(Number(buyins[1]), aConstants.NO_BONUS*4, 'user buyins received upated');
+			assert.equal(Number(await this.auctionInstance.totalAccounted()), aConstants.BONUS_20+aConstants.BONUS_15+aConstants.BONUS_10+aConstants.BONUS_5, 'total accounted updated');
+			assert.equal(Number(await this.auctionInstance.totalReceived()), aConstants.NO_BONUS*4, 'total receieved updated');
+		});
 
-			/* ---- 0% bonus ---- */
+		it('0% bonus effective', async () => {
 			increaseTime(constants.DAY_EPOCH);
-			await auctionInstance.buyin(v, r, s, {from:constants.PARTICIPANT_ONE, value: NO_BONUS});
-			assert.equal(Number(await auctionInstance.currentBonus()), 0);
-			assert.equal(Number(await auctionInstance.currentBonusRound()), 5, 'bonus round updated');
-			buyins = await auctionInstance.buyins(constants.PARTICIPANT_ONE);
-			assert.equal(Number(buyins[0]), BONUS_20+BONUS_15+BONUS_10+BONUS_5+NO_BONUS, 'user buyins accounted upated');
-			assert.equal(Number(buyins[1]), NO_BONUS*5, 'user buyins received upated');
-			assert.equal(Number(await auctionInstance.totalAccounted()), BONUS_20+BONUS_15+BONUS_10+BONUS_5+NO_BONUS, 'total accounted updated');
-			assert.equal(Number(await auctionInstance.totalReceived()), NO_BONUS*5, 'total receieved updated');
+			await this.auctionInstance.buyin(this.v, this.r, this.s, {from:constants.PARTICIPANT_ONE, value: aConstants.NO_BONUS});
+			assert.equal(Number(await this.auctionInstance.currentBonus()), 0);
+			assert.equal(Number(await this.auctionInstance.currentBonusRound()), 5, 'bonus round updated');
+			buyins = await this.auctionInstance.buyins(constants.PARTICIPANT_ONE);
+			assert.equal(Number(buyins[0]), aConstants.BONUS_20+aConstants.BONUS_15+aConstants.BONUS_10+aConstants.BONUS_5+aConstants.NO_BONUS, 'user buyins accounted upated');
+			assert.equal(Number(buyins[1]), aConstants.NO_BONUS*5, 'user buyins received upated');
+			assert.equal(Number(await this.auctionInstance.totalAccounted()), aConstants.BONUS_20+aConstants.BONUS_15+aConstants.BONUS_10+aConstants.BONUS_5+aConstants.NO_BONUS, 'total accounted updated');
+			assert.equal(Number(await this.auctionInstance.totalReceived()), aConstants.NO_BONUS*5, 'total receieved updated');
+		});
 
-				/* ---- require (!refund); ---- */
-						  // Fund over amount //
-				await auctionInstance.buyin(v, r, s, {from:constants.PARTICIPANT_ONE, value: web3.toWei(1635284,'ether')}).catch(function(err){
-		      assert.include(err.message,'assert.fail');
-		    });
+		it('Catch require(!refund) fund over token availability', async () => {
+			await this.auctionInstance.buyin(this.v, this.r, this.s, {from:constants.PARTICIPANT_ONE, value: web3.toWei(1635284,'ether')}).catch(function(err){
+				assert.include(err.message,'assert.fail');
+			});
+		});
 	});
 
-	it('Meet softcap, then end auction', async () => {
-			await auctionInstance.buyin(v, r, s, {from:constants.PARTICIPANT_ONE, value: web3.toWei(35970,'ether')});
-			assert.equal(await auctionInstance.softCapMet(), true);
 
+	describe('Ending of auction', () => {
+		it('function - buyin() fund softcap', async () => {
+			await this.auctionInstance.buyin(this.v, this.r, this.s, {from:constants.PARTICIPANT_ONE, value: web3.toWei(35970,'ether')});
+			assert.equal(await this.auctionInstance.softCapMet(), true);
+		});
+
+		it('increase time to END_TIME', async () => {
 			increaseTime(END_TIME);
-			assert.equal(await auctionInstance.isActive(), false);
-			await erc20Instance.transfer(auctionInstance.address, constants.AUCTION_CAP);
-			assert.equal(await erc20Instance.balanceOf(auctionInstance.address), constants.AUCTION_CAP);
-	});
+			assert.equal(await this.auctionInstance.isActive(), false);
+			await this.erc20Instance.transfer(this.auctionInstance.address, constants.AUCTION_CAP);
+			assert.equal(await this.erc20Instance.balanceOf(this.auctionInstance.address), constants.AUCTION_CAP);		});
 
-	it('Finalize', async () => {
-		let buyin = await auctionInstance.buyins(constants.PARTICIPANT_ONE);
-		console.log(buyin[0], buyin[1], Number(buyin[2]));
-
-		await auctionInstance.finalise(constants.PARTICIPANT_ONE);
-		assert.equal(await erc20Instance.balanceOf(constants.PARTICIPANT_ONE), constants.AUCTION_CAP);
-		assert.equal(await erc20Instance.balanceOf(auctionInstance.address), 0);
+		it('function - finalise() & check transfer values', async () => {
+			let buyin = await this.auctionInstance.buyins(constants.PARTICIPANT_ONE);
+			await this.auctionInstance.finalise(constants.PARTICIPANT_ONE);
+			assert.equal(await this.erc20Instance.balanceOf(constants.PARTICIPANT_ONE), constants.AUCTION_CAP);
+			assert.equal(await this.erc20Instance.balanceOf(this.auctionInstance.address), 0);
+		});
 	});
 });
