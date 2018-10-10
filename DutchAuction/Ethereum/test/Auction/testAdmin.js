@@ -13,7 +13,7 @@ const increaseTime = addSeconds => {
 
 contract('testAdmin.js', function(accounts) {
 	const BEGIN_TIME = web3.eth.getBlock(web3.eth.blockNumber).timestamp + 1000;
-	const END_TIME = BEGIN_TIME + (15 * constants.DAY_EPOCH);
+	const END_TIME = (15 * constants.DAY_EPOCH);
 
 	describe('Deployment', () => {
     it('ERC20BurnableAndMintable', async () => {

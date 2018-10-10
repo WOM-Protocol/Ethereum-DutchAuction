@@ -13,7 +13,7 @@ const increaseTime = addSeconds => {
 
 contract('testAuction.js', function(accounts) {
 	const BEGIN_TIME = web3.eth.getBlock(web3.eth.blockNumber).timestamp + 1000;
-  const END_TIME = BEGIN_TIME + (15 * constants.DAY_EPOCH);
+	const END_TIME = (15 * constants.DAY_EPOCH);
 
 	describe('Deployment', () => {
 		it('ERC20BurnableAndMintable', async () => {
@@ -77,7 +77,7 @@ contract('testAuction.js', function(accounts) {
 			increaseTime(1000);
 		});
 		it('var - endTime set', async () => {
-			assert.equal(await this.auctionInstance.endTime(), END_TIME, 'END time set correctly');
+			assert.equal(await this.auctionInstance.endTime(), BEGIN_TIME + END_TIME, 'END time set correctly');
 		});
 		it('function - isActive() TRUE', async () => {
 			assert.equal(true, await this.auctionInstance.isActive(), 'Active auction');
