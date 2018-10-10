@@ -12,7 +12,10 @@
     "ethereumjs-util": "^5.2.0",
     "sha3": "^1.2.2",
     "solc": "^0.4.25",
+    "solcheck": "^0.1.3",
     "solidity-coverage": "^0.5.11",
+    "solidity-parser-antlr": "^0.3.2",
+    "solium": "^1.1.8",
     "truffle": "^4.1.14"
   },
   "devDependencies": {},
