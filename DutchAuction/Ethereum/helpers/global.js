@@ -14,7 +14,7 @@ module.exports = {
   NOT_OWNER : accounts[7],
   LOCKED_ACCOUNT : accounts[8],
   EMERGENCY_ADDRESS : accounts[9],
-  BEGIN_TIME : web3.eth.getBlock(web3.eth.blockNumber).timestamp,
+  BEGIN_TIME : web3.eth.getBlock(web3.eth.blockNumber).timestamp + 1000,
   TOKEN_SUPPLY : 1000000000000000000000000000,
   AUCTION_CAP : 350000000000000000000000000,
   TRAILING_DECIMALS : 000000000000000000,

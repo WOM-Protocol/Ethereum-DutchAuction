@@ -1,5 +1,3 @@
-var util = require("ethereumjs-util");
-
 const SecondPriceAuction = artifacts.require('./SecondPriceAuction.sol');
 const MultiCertifier = artifacts.require('./MultiCertifier.sol');
 const ERC20BurnableAndMintable = artifacts.require('./ERC20BurnableAndMintable.sol');
@@ -8,6 +6,7 @@ const TokenVesting = artifacts.require('./TokenVesting.sol');
 const AssertRevert = require('../../helpers/AssertRevert.js');
 const constants = require('../../helpers/global.js');
 const aConstants = require('./auctionGlobals.js');
+const util = require("ethereumjs-util");
 
 const increaseTime = addSeconds => {
 	web3.currentProvider.send({jsonrpc: "2.0", method: "evm_increaseTime", params: [addSeconds], id: 0});
@@ -15,33 +14,14 @@ const increaseTime = addSeconds => {
 }
 
 contract('testContribution.js', function(accounts) {
-  const BEGIN_TIME = web3.eth.getBlock(web3.eth.blockNumber).timestamp + 1000;
 	const END_TIME = (15 * constants.DAY_EPOCH);
 
-	describe('Deployment', () => {
-		it('ERC20BurnableAndMintable', async () => {
-			this.erc20Instance = await ERC20BurnableAndMintable.new(
-				constants.TOKEN_SUPPLY, constants.TOKEN_NAME, 18, constants.TOKEN_SYMBOL);
-		});
+	it('Grab needed deployed contracts', async () => {
+		this.erc20Instance = await ERC20BurnableAndMintable.deployed();
+		this.multiCertifierInstance = await MultiCertifier.deployed();
+		this.tokenVestingInstance = await TokenVesting.deployed();
+		this.auctionInstance = await SecondPriceAuction.deployed();
 
-		it('MultiCertifier', async () => {
-			this.multiCertifierInstance = await MultiCertifier.new();
-		});
-
-		it('TokenVesting', async () => {
-			this.tokenVestingInstance = await TokenVesting.new(this.erc20Instance.address);
-		});
-
-		it('SecondPriceAuction', async () => {
-			this.auctionInstance = await SecondPriceAuction.new(
-				this.multiCertifierInstance.address,
-				this.erc20Instance.address,
-				this.tokenVestingInstance.address,
-				constants.TREASURY,
-				constants.ADMIN,
-				BEGIN_TIME,
-				constants.AUCTION_CAP);
-		});
 	});
 
 	describe('function - buyin()', () => {

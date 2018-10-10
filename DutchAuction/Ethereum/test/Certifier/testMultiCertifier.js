@@ -4,10 +4,8 @@ const AssertRevert = require('../../helpers/AssertRevert.js');
 const constants = require('../../helpers/global.js');
 
 contract('Certifier - MultiCertifier.sol', function(accounts) {
-  describe('Deployment Ownable.sol', () => {
-    it('deploys', async () => {
-      this.multiCertifierInstance = await MultiCertifier.new();
-    });
+  it('Grab needed deployed contracts', async () => {
+    this.multiCertifierInstance = await MultiCertifier.deployed();
   });
 
   describe('function - addDelegate()', () => {

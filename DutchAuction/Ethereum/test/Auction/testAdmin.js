@@ -12,33 +12,14 @@ const increaseTime = addSeconds => {
 };
 
 contract('testAdmin.js', function(accounts) {
-	const BEGIN_TIME = web3.eth.getBlock(web3.eth.blockNumber).timestamp + 1000;
 	const END_TIME = (15 * constants.DAY_EPOCH);
 
-	describe('Deployment', () => {
-    it('ERC20BurnableAndMintable', async () => {
-			this.erc20Instance = await ERC20BurnableAndMintable.new(
-				constants.TOKEN_SUPPLY, constants.TOKEN_NAME, 18, constants.TOKEN_SYMBOL);
-    });
+	it('Grab needed deployed contracts', async () => {
+		this.erc20Instance = await ERC20BurnableAndMintable.deployed();
+		this.multiCertifierInstance = await MultiCertifier.deployed();
+		this.tokenVestingInstance = await TokenVesting.deployed();
+		this.auctionInstance = await SecondPriceAuction.deployed();
 
-    it('MultiCertifier', async () => {
-			this.multiCertifierInstance = await MultiCertifier.new();
-    });
-
-		it('TokenVesting', async () => {
-			this.tokenVestingInstance = await TokenVesting.new(this.erc20Instance.address);
-    });
-
-		it('SecondPriceAuction', async () => {
-			this.auctionInstance = await SecondPriceAuction.new(
-				this.multiCertifierInstance.address,
-				this.erc20Instance.address,
-				this.tokenVestingInstance.address,
-				constants.TREASURY,
-				constants.ADMIN,
-				BEGIN_TIME,
-				constants.AUCTION_CAP);
-		});
 	});
 
 	describe('function - inject()', () => {
