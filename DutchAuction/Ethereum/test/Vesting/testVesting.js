@@ -4,7 +4,7 @@ const ERC20BurnableAndMintable = artifacts.require('./ERC20BurnableAndMintable.s
 const TokenVesting = artifacts.require('./TokenVesting.sol');
 
 const AssertRevert = require('../../helpers/AssertRevert.js');
-const constants = require('../global.js');
+const constants = require('../../helpers/global.js');
 
 const increaseTime = addSeconds => {
 	web3.currentProvider.send({jsonrpc: "2.0", method: "evm_increaseTime", params: [addSeconds], id: 0});
@@ -12,8 +12,6 @@ const increaseTime = addSeconds => {
 }
 
 contract('vesting.js', function(accounts) {
-
-
   const BEGIN_TIME = web3.eth.getBlock(web3.eth.blockNumber).timestamp + 1000;
 
   const END_TIME = (15 * constants.DAY_EPOCH);

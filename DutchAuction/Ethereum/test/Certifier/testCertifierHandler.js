@@ -2,18 +2,13 @@ const MultiCertifier = artifacts.require('./MultiCertifier.sol');
 const CertifierHandler = artifacts.require('./CertifierHandler.sol');
 
 const AssertRevert = require('../../helpers/AssertRevert.js');
-const constants = require('../global.js');
+const constants = require('../../helpers/global.js');
 
 contract('Certifier - CertifierHandler.sol', function(accounts) {
-	describe('Deployment', () => {
-    it('MultiCertifier', async () => {
-      this.multiCertifierInstance = await MultiCertifier.new();
-    });
-
-    it('CertifierHandler', async () => {
-      this.certifierHandlerInstance = await CertifierHandler.new(this.multiCertifierInstance.address, constants.TREASURY);
-    });
-  });
+	it('Grab needed deployed contracts', async () => {
+		this.multiCertifierInstance = await MultiCertifier.deployed();
+		this.certifierHandlerInstance = await CertifierHandler.deployed();
+	});
 
 	describe('function - setFee()', () => {
     it('catch only_owner modifier', async () => {

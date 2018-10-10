@@ -1,7 +1,7 @@
 const MultiCertifier = artifacts.require('./MultiCertifier.sol');
 
 const AssertRevert = require('../../helpers/AssertRevert.js');
-const constants = require('../global.js');
+const constants = require('../../helpers/global.js');
 
 contract('Certifier - MultiCertifier.sol', function(accounts) {
   describe('Deployment Ownable.sol', () => {

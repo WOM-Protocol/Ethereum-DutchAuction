@@ -3,7 +3,7 @@ const MultiCertifier = artifacts.require('./MultiCertifier.sol');
 const ERC20BurnableAndMintable = artifacts.require('./ERC20BurnableAndMintable.sol');
 const TokenVesting = artifacts.require('./TokenVesting.sol');
 
-const constants = require('../global.js');
+const constants = require('../../helpers/global.js');
 const aConstants = require('./auctionGlobals.js');
 
 const increaseTime = addSeconds => {

@@ -4,7 +4,7 @@ const ERC20BurnableAndMintable = artifacts.require('./ERC20BurnableAndMintable.s
 const TokenVesting = artifacts.require('./TokenVesting.sol');
 
 const AssertRevert = require('../../helpers/AssertRevert.js');
-const constants = require('../global.js');
+const constants = require('../../helpers/global.js');
 
 const increaseTime = addSeconds => {
 	web3.currentProvider.send({jsonrpc: "2.0", method: "evm_increaseTime", params: [addSeconds], id: 0});

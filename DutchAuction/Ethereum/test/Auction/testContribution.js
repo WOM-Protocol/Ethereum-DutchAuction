@@ -6,7 +6,7 @@ const ERC20BurnableAndMintable = artifacts.require('./ERC20BurnableAndMintable.s
 const TokenVesting = artifacts.require('./TokenVesting.sol');
 
 const AssertRevert = require('../../helpers/AssertRevert.js');
-const constants = require('../global.js');
+const constants = require('../../helpers/global.js');
 const aConstants = require('./auctionGlobals.js');
 
 const increaseTime = addSeconds => {
@@ -114,8 +114,6 @@ contract('testContribution.js', function(accounts) {
 		it('function eligibleCall()', async () => {
 			assert.equal(await this.auctionInstance.eligibleCall(constants.PARTICIPANT_ONE, this.v, this.r, this.s), true);
 		});
-
-
 	});
 
 	describe('function buyin() bonus rounds', () => {

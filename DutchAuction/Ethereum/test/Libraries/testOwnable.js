@@ -1,18 +1,10 @@
 const Ownable = artifacts.require('./Ownable.sol');
 const AssertRevert = require('../../helpers/AssertRevert.js');
-
-const constants = require('../global.js');
+const constants = require('../../helpers/global.js');
 
 contract('Libraries - testOwnable.js', async (accounts) => {
-
-  describe('Deployment Ownable.sol', () => {
-    it('deploys', async () => {
-      this.ownableInstance = await Ownable.new({from:constants.OWNER});
-    });
-
-    it('initial assignment correct', async () => {
-      assert.equal(await this.ownableInstance.owner(), constants.OWNER, 'Owner is correctly set');
-    });
+  it('Grab needed deployed contracts', async () => {
+    this.ownableInstance = await Ownable.deployed();
   });
 
   describe('function - transferOwnership()', () => {
