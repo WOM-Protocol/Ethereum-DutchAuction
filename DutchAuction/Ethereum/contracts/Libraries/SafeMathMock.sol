@@ -23,4 +23,13 @@ contract SafeMathMock {
     function mod(uint256 a, uint256 b) public pure returns (uint256) {
         return SafeMath.mod(a, b);
     }
+
+    /**
+     * @dev Fallback function that does not accept Ether.
+     */
+    function ()
+    public
+     {
+        revert();
+    }
 }

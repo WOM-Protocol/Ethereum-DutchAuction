@@ -164,7 +164,7 @@ contract TokenVesting is Ownable {
 
     function bytesToAddress(bytes bys)
     private
-    pure
+    view
     returns (address addr) {
       assembly {
         addr := mload(add(bys,20))
@@ -182,4 +182,13 @@ contract TokenVesting is Ownable {
     event TokensRecieved(address indexed who, uint indexed amount, uint indexed timestamp);
     event Released(uint256 amount);
     event Revoked();
+
+		/**
+     * @dev Fallback function that does not accept Ether.
+     */
+    function ()
+    public
+     {
+        revert();
+    }
 }

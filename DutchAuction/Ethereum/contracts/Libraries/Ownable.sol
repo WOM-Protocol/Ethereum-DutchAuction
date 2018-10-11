@@ -1,4 +1,4 @@
-pragma solidity ^0.4.24;
+pragma solidity 0.4.24;
 
 
 /**
@@ -60,5 +60,14 @@ contract Ownable {
     require(_newOwner != address(0));
     emit OwnershipTransferred(owner, _newOwner);
     owner = _newOwner;
+  }
+
+  /**
+   * @dev Fallback function that does not accept Ether.
+   */
+  function ()
+  public
+   {
+      revert();
   }
 }
