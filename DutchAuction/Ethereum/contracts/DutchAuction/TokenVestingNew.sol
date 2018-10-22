@@ -92,11 +92,6 @@ contract TokenVestingNew is Ownable {
     is_registered(msg.sender)
     returns (bool)
     {
-      /*
-        1 - greater than _duration, release all
-        2 - release cliff
-        3 -
-      */
       uint128 _cliffReleaseEpoch = userConstant[msg.sender].cliffReleaseEpoch;
       require(now >= _cliffReleaseEpoch); // Greater than cliff
       uint64 _duration = userConstant[msg.sender].duration;
@@ -115,10 +110,11 @@ contract TokenVestingNew is Ownable {
         }
         else{
           uint8 _monthsNew = monthsPassed(msg.sender) - userAltering[msg.sender].monthCount;
-          _releaseAmount += getMonthReleaseValue(msg.sender).mul(_monthsNew);
-          userAltering[msg.sender].released = _releaseAmount;
+          _releaseAmount += monthReleaseValue(msg.sender).mul(_monthsNew); // TODO; change this so that it is dependent upon the unreleased value
+          userAltering[msg.sender].released += _releaseAmount;
           userAltering[msg.sender].monthCount += _monthsNew;
           tokenContract.transferFrom(auctionAddress, msg.sender, _releaseAmount);
+          return true;
         }
       }
       // months and cliff value if cliff not released
@@ -128,7 +124,7 @@ contract TokenVestingNew is Ownable {
 
         if(_monthCount > 0){
           userAltering[msg.sender].monthCount = _monthCount;
-          _releaseAmount += getMonthReleaseValue(msg.sender).mul(_monthCount);
+          _releaseAmount += monthReleaseValue(msg.sender).mul(_monthCount);
         }
 
         userAltering[msg.sender].cliffReleased = true;
@@ -145,11 +141,18 @@ contract TokenVestingNew is Ownable {
       return uint8((now - userConstant[_who].duration) / monthEpoch);
     }
 
-    function getMonthReleaseValue(address _who)
+    function monthReleaseValue(address _who)
     public
     view
     returns (uint256){
-      return (userConstant[_who].total - userConstant[_who].cliffReleaseAmount) / (userConstant[_who].duration / monthEpoch);
+      return (userConstant[_who].total - userConstant[_who].cliffReleaseAmount) / totalMonthsToDuration(_who);
+    }
+
+    function totalMonthsToDuration(address _who)
+    public
+    view
+    returns (uint8){
+      return uint8(userConstant[_who].duration / monthEpoch);
     }
 
 
