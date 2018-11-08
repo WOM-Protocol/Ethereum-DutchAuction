@@ -3,6 +3,10 @@ const MultiCertifier = artifacts.require('./MultiCertifier.sol');
 const ERC20BurnableAndMintable = artifacts.require('./ERC20BurnableAndMintable.sol');
 const TokenVesting = artifacts.require('./TokenVesting.sol');
 
+const BigNumber = web3.BigNumber;
+const time = require('../helpers/time');
+const expectEvent = require('../helpers/expectEvent');
+const { ethGetBlock } = require('../helpers/web3');
 const AssertRevert = require('../../helpers/AssertRevert.js');
 const constants = require('../../helpers/global.js');
 
@@ -11,17 +15,17 @@ const increaseTime = addSeconds => {
 	web3.currentProvider.send({jsonrpc: "2.0", method: "evm_mine", params: [], id: 1});
 }
 
-contract('testAdmin.js', function(accounts) {
-  const END_TIME = (15 * constants.DAY_EPOCH);
-  const YEAR_EPOCH = 31556926;
-	const CLIFF_START = constants.BEGIN_TIME + YEAR_EPOCH + END_TIME;
+require('chai')
+  .use(require('chai-bignumber')(BigNumber))
+  .should();
 
-	const PARTICIPANT_PURCHASE = web3.toWei(10,'ether');
-	const PARTICIPANT_PURCHASE_WITH_BONUS = Number(PARTICIPANT_PURCHASE * 1.2);
-	const PRESALE_PURCHASE = web3.toWei(45190,'ether');
-	const PRESALE_PURCHASE_WITH_BONUS = Number(PRESALE_PURCHASE * 1.15);
+contract('TokenVesting', function ([_, owner, beneficiary]) {
+  const PARTICIPANT_PURCHASE = web3.toWei(10,'ether');
+  const PARTICIPANT_PURCHASE_WITH_BONUS = Number(PARTICIPANT_PURCHASE * 1.2);
+  const PRESALE_PURCHASE = web3.toWei(22595,'ether');
+  const PRESALE_PURCHASE_WITH_BONUS = Number(PRESALE_PURCHASE * 1.15);
 
-	describe('grab deployed + initiate', () => {
+  describe('grab deployed + initiate', () => {
 		it('Grab needed deployed contracts', async () => {
 			this.erc20Instance = await ERC20BurnableAndMintable.deployed();
 			this.multiCertifierInstance = await MultiCertifier.deployed();
@@ -32,7 +36,11 @@ contract('testAdmin.js', function(accounts) {
 			await this.tokenVestingInstance.assignAuctionAddress(this.auctionInstance.address);
 			assert.equal(await this.tokenVestingInstance.auctionAddress(), this.auctionInstance.address);
 		});
-	});
+    it('set times', async () => {
+      this.cliffDuration = time.duration.years(1);
+      this.duration = time.duration.years(2);
+    });
+  });
 
 	describe('function - registerPresaleVest()', () => {
     it('trasnfer AUCTION_CAP to auction contract', async () => {
@@ -41,36 +49,38 @@ contract('testAdmin.js', function(accounts) {
 			});
 
     it('catch not_empty_uint modifier ', async () => {
-			let not_empty_uint = this.tokenVestingInstance.registerPresaleVest(constants.PARTICIPANT_PRESALE, CLIFF_START, 0, 25);
+			let not_empty_uint = this.tokenVestingInstance.registerPresaleVest(false, constants.PARTICIPANT_PRESALE, this.cliffDuration);
 			AssertRevert.assertRevert(not_empty_uint);
     });
 
 		it('catch not_empty_address', async () => {
-			let notEmptyAddress = this.tokenVestingInstance.registerPresaleVest(constants.EMPTY_ADDRESS, CLIFF_START, YEAR_EPOCH, 25);
-			AssertRevert.assertRevert(notEmptyAddress);
+			let not_empty_address = this.tokenVestingInstance.registerPresaleVest(true, constants.EMPTY_ADDRESS, this.cliffDuration, this.duration);
+			AssertRevert.assertRevert(not_empty_address);
 		 });
 
 		 it('correct register', async () => {
-			 await this.tokenVestingInstance.registerPresaleVest(constants.PARTICIPANT_PRESALE, CLIFF_START, YEAR_EPOCH, 25);
-			 let users = await this.tokenVestingInstance.users(constants.PARTICIPANT_PRESALE);
-			 assert.equal(users[0], CLIFF_START);
-			 assert.equal(users[1], YEAR_EPOCH);
-			 assert.equal(users[2], 25);
- 		 });
+			 await this.tokenVestingInstance.registerPresaleVest(false, constants.PARTICIPANT_PRESALE, this.cliffDuration, this.duration);
+			 await this.tokenVestingInstance.registerPresaleVest(true, constants.PARTICIPANT_PRESALE_TWO, this.cliffDuration, this.duration);
+			 assert.equal(await this.tokenVestingInstance.registered(constants.PARTICIPANT_PRESALE), true);
+			 assert.equal(await this.tokenVestingInstance.registered(constants.PARTICIPANT_PRESALE_TWO), true);
+     });
 
 		 it('catch not_registered modifier', async () => {
-			 let not_registered = this.tokenVestingInstance.registerPresaleVest(constants.PARTICIPANT_PRESALE, CLIFF_START, YEAR_EPOCH, 25);
+			 let not_registered = this.tokenVestingInstance.registerPresaleVest(false, constants.PARTICIPANT_PRESALE, this.cliffDuration, this.duration);
 			 AssertRevert.assertRevert(not_registered);
-			 //console.log('total accounted: ', Number(await this.auctionInstance.totalAccounted()));
-		 	 //console.log('eth to wei: ', Number(web3.toWei(35971,'ether')));
  		 });
 
 		 it('inject into auction', async () => {
 			 await this.auctionInstance.inject(constants.PARTICIPANT_PRESALE, PRESALE_PURCHASE, 15, {from:constants.ADMIN});
-			});
+       await this.auctionInstance.inject(constants.PARTICIPANT_PRESALE_TWO, PRESALE_PURCHASE, 15, {from:constants.ADMIN});
+			 const PARTICIPANT_PRESALE_BUYINS = await this.auctionInstance.buyins(constants.PARTICIPANT_PRESALE);
+			 const PARTICIPANT_PRESALE_TWO_BUYINS = await this.auctionInstance.buyins(constants.PARTICIPANT_PRESALE);
+			 assert.equal(PARTICIPANT_PRESALE_BUYINS[2], true);
+			 assert.equal(PARTICIPANT_PRESALE_TWO_BUYINS[2], true);
+      });
 	});
 
-	describe('participation normal user()', () => {
+  describe('participation normal user()', () => {
     it('buyin', async () => {
 			increaseTime(1000);
 			const message = 'TLCS.'
@@ -88,7 +98,7 @@ contract('testAdmin.js', function(accounts) {
     });
 
 		it('set time ended', async () => {
-			increaseTime(END_TIME);
+			increaseTime(time.duration.days(15));
 			assert.equal(await this.auctionInstance.isActive(), false);
 			assert.equal(await this.auctionInstance.softCapMet(), true);
 		});
@@ -99,10 +109,17 @@ contract('testAdmin.js', function(accounts) {
 	    await this.auctionInstance.finalise(constants.PARTICIPANT_ONE);
     });
 
-    it('finalize as PARTICIPANT_PRESALE', async () => {
-			await this.auctionInstance.finalise(constants.PARTICIPANT_PRESALE);
-			assert.equal(await this.auctionInstance.isFinalized(), true);
-		});
+		it('finalize as PARTICIPANT_PRESALE', async () => {
+	    await this.auctionInstance.finalise(constants.PARTICIPANT_PRESALE);
+    });
+
+		it('finalize as PARTICIPANT_PRESALE', async () => {
+	    await this.auctionInstance.finalise(constants.PARTICIPANT_PRESALE_TWO);
+			this.start = await time.latest();
+			userData = await this.tokenVestingInstance.userData(constants.PARTICIPANT_PRESALE_TWO);
+			this.untouchedTotalTokens = userData[3];
+ 			assert.equal(await this.auctionInstance.isFinalized(), true);
+    });
 
     it('validate', async () => {
 			tokenCap = Number(await this.auctionInstance.tokenCap());
@@ -116,35 +133,29 @@ contract('testAdmin.js', function(accounts) {
     });
   });
 
-	describe('tokenVesting contract', () => {
-    it('validate transfer occured to contract ', async () => {
-			let presaleBalance = Number(await this.erc20Instance.allowance(this.auctionInstance.address, this.tokenVestingInstance.address));
-			let usersVest = await this.tokenVestingInstance.users(constants.PARTICIPANT_PRESALE);
-			let shouldBeCliffRelease = presaleBalance * 0.25;
-			let shouldBePaymentPerMonth = (presaleBalance - shouldBeCliffRelease) / (12);
+  describe('function release()', () => {
+		it('can be released after cliff', async () => {
+      await time.increaseTo(this.start + this.cliffDuration + time.duration.weeks(1));
+      const { logs, receipt } = await this.tokenVestingInstance.release({from:constants.PARTICIPANT_PRESALE});
+      expectEvent.inLogs(logs, 'TokensReleased', {
+        who: constants.PARTICIPANT_PRESALE,
+        amount: await this.erc20Instance.balanceOf(constants.PARTICIPANT_PRESALE),
+      });
+      const block = await ethGetBlock(receipt.blockNumber);
+      const releaseTime = block.timestamp;
 
-			assert.equal(Number(usersVest[3]), shouldBeCliffRelease);
-			assert.equal(Number(usersVest[4]), shouldBePaymentPerMonth);
-			assert.equal(Number(usersVest[5]), presaleBalance);
-			assert.equal(Number(usersVest[7]), presaleBalance);
-		 });
+      const releasedAmount = new BigNumber(this.untouchedTotalTokens.mul(releaseTime - this.start).div(this.duration));
+      userData = await this.tokenVestingInstance.userData(constants.PARTICIPANT_PRESALE);
+
+      assert.equal(Number(await this.erc20Instance.balanceOf(constants.PARTICIPANT_PRESALE)), Number(releasedAmount));
+      assert.equal(Number(userData[4]), Number(releasedAmount));
+      assert.equal(Number(userData[3]), Number(this.untouchedTotalTokens.sub(releasedAmount)));
+    });
 
     it('release() - catch is_registered modifier', async () => {
 			let is_registered = this.tokenVestingInstance.release({from:constants.PARTICIPANT_ONE});
 			AssertRevert.assertRevert(is_registered);
     });
-
-    it('increase time to cliff then release ', async () => {
-			increaseTime(YEAR_EPOCH+constants.DAY_EPOCH);
-			await this.tokenVestingInstance.release({from:constants.PARTICIPANT_PRESALE});
-
-			let users = await this.tokenVestingInstance.users(constants.PARTICIPANT_PRESALE);
-			assert.equal(Number(users[3]), Number(await this.erc20Instance.balanceOf(constants.PARTICIPANT_PRESALE)));
-			assert.equal(Number(users[5]), Number(users[7]) - Number(users[3]));
-			assert.equal(Number(users[6]), Number(users[3]));
-			assert.equal(Number(users[8]), 1);
-			assert.equal(users[9], true);
-		  });
   });
 
 	describe('admin functionality tokenVesting', () => {
@@ -154,9 +165,26 @@ contract('testAdmin.js', function(accounts) {
     });
 
     it('function - emergencyDrain() catch not_locked modifier', async () => {
-			let not_locked = this.tokenVestingInstance.emergencyDrain(constants.EMERGENCY_ADDRESS);
-	    AssertRevert.assertRevert(not_locked);
+			await this.tokenVestingInstance.emergencyDrain(constants.EMERGENCY_ADDRESS).catch(function(err){
+	      assert.include(err.message,'VM Exception');
+	    });
     });
+
+		it('function - revoke() PARTICIPANT_PRESALE catch revocable require ', async () => {
+			let is_revocable = this.tokenVestingInstance.revoke(constants.PARTICIPANT_PRESALE, constants.EMERGENCY_ADDRESS, {from:constants.OWNER});
+			AssertRevert.assertRevert(is_revocable);
+		});
+
+		it('function - revoke() PARTICIPANT_PRESALE_TWO ', async () => {
+			userData = await this.tokenVestingInstance.userData(constants.PARTICIPANT_PRESALE_TWO);
+			totalAccounted = Number(await this.tokenVestingInstance.totalAccounted());
+			await this.tokenVestingInstance.revoke(constants.PARTICIPANT_PRESALE_TWO, constants.EMERGENCY_ADDRESS, {from:constants.OWNER});
+			assert.equal(await this.tokenVestingInstance.revoked(constants.PARTICIPANT_PRESALE_TWO), true);
+			assert.equal(Number(await this.erc20Instance.balanceOf(constants.EMERGENCY_ADDRESS)), Number(userData[3]));
+			assert.equal(Number(await this.tokenVestingInstance.totalAccounted()), totalAccounted - Number(userData[3]));
+			userData = await this.tokenVestingInstance.userData(constants.PARTICIPANT_PRESALE_TWO);
+			assert.equal(Number(userData[3]), 0);
+		});
 
     it('function - setLock() lock ', async () => {
 			await this.tokenVestingInstance.setLock(true, {from:constants.OWNER});
@@ -167,7 +195,7 @@ contract('testAdmin.js', function(accounts) {
 			let locked = this.tokenVestingInstance.release({from:constants.PARTICIPANT_PRESALE});
 	    AssertRevert.assertRevert(locked);
 		});
-
+/*
 		it('function - emergencyDrain() when locked ', async () => {
 			let balanceBefore = await this.erc20Instance.allowance(this.auctionInstance.address, this.tokenVestingInstance.address);
 
@@ -175,5 +203,6 @@ contract('testAdmin.js', function(accounts) {
 	    assert.equal(await this.erc20Instance.allowance(this.auctionInstance.address, this.tokenVestingInstance.address), 0);
 	    assert.equal(Number(await this.erc20Instance.balanceOf(constants.EMERGENCY_ADDRESS)), Number(balanceBefore));
 		});
+		*/
   });
 });

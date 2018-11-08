@@ -15,7 +15,6 @@ const increaseTime = addSeconds => {
 	web3.currentProvider.send({jsonrpc: "2.0", method: "evm_mine", params: [], id: 1});
 }
 
-
 require('chai')
   .use(require('chai-bignumber')(BigNumber))
   .should();
@@ -50,24 +49,24 @@ contract('TokenVesting', function ([_, owner, beneficiary]) {
 			});
 
     it('catch not_empty_uint modifier ', async () => {
-			let not_empty_uint = this.tokenVestingInstance.registerPresaleVest(constants.PARTICIPANT_PRESALE, this.cliffDuration);
+			let not_empty_uint = this.tokenVestingInstance.registerPresaleVest(false, constants.PARTICIPANT_PRESALE, this.cliffDuration);
 			AssertRevert.assertRevert(not_empty_uint);
     });
 
 		it('catch not_empty_address', async () => {
-			let not_empty_address = this.tokenVestingInstance.registerPresaleVest(constants.EMPTY_ADDRESS, this.cliffDuration, this.duration);
+			let not_empty_address = this.tokenVestingInstance.registerPresaleVest(true, constants.EMPTY_ADDRESS, this.cliffDuration, this.duration);
 			AssertRevert.assertRevert(not_empty_address);
 		 });
 
 		 it('correct register', async () => {
-			 await this.tokenVestingInstance.registerPresaleVest(constants.PARTICIPANT_PRESALE, this.cliffDuration, this.duration);
-			 await this.tokenVestingInstance.registerPresaleVest(constants.PARTICIPANT_PRESALE_TWO, this.cliffDuration, this.duration);
+			 await this.tokenVestingInstance.registerPresaleVest(false, constants.PARTICIPANT_PRESALE, this.cliffDuration, this.duration);
+			 await this.tokenVestingInstance.registerPresaleVest(true, constants.PARTICIPANT_PRESALE_TWO, this.cliffDuration, this.duration);
 			 assert.equal(await this.tokenVestingInstance.registered(constants.PARTICIPANT_PRESALE), true);
 			 assert.equal(await this.tokenVestingInstance.registered(constants.PARTICIPANT_PRESALE_TWO), true);
      });
 
 		 it('catch not_registered modifier', async () => {
-			 let not_registered = this.tokenVestingInstance.registerPresaleVest(constants.PARTICIPANT_PRESALE, this.cliffDuration, this.duration);
+			 let not_registered = this.tokenVestingInstance.registerPresaleVest(false, constants.PARTICIPANT_PRESALE, this.cliffDuration, this.duration);
 			 AssertRevert.assertRevert(not_registered);
  		 });
 
@@ -193,51 +192,5 @@ contract('TokenVesting', function ([_, owner, beneficiary]) {
 			assert.equal(userData[0], 0);
 		});
 
-/*
-
-    it('should be revoked by owner if revocable is set', async function () {
-      const { logs } = await this.vesting.revoke(this.token.address, { from: owner });
-      expectEvent.inLogs(logs, 'TokenVestingRevoked', { token: this.token.address });
-      (await this.vesting.revoked(this.token.address)).should.equal(true);
-    });
-
-    it('should fail to be revoked by owner if revocable not set', async function () {
-      const vesting = await TokenVesting.new(
-        beneficiary, this.start, this.cliffDuration, this.duration, false, { from: owner }
-      );
-
-      await shouldFail.reverting(vesting.revoke(this.token.address, { from: owner }));
-    });
-
-    it('should return the non-vested tokens when revoked by owner', async function () {
-      await time.increaseTo(this.start + this.cliffDuration + time.duration.weeks(12));
-
-      const vested = vestedAmount(amount, await time.latest(), this.start, this.cliffDuration, this.duration);
-
-      await this.vesting.revoke(this.token.address, { from: owner });
-
-      (await this.token.balanceOf(owner)).should.bignumber.equal(amount.sub(vested));
-    });
-
-    it('should keep the vested tokens when revoked by owner', async function () {
-      await time.increaseTo(this.start + this.cliffDuration + time.duration.weeks(12));
-
-      const vestedPre = vestedAmount(amount, await time.latest(), this.start, this.cliffDuration, this.duration);
-
-      await this.vesting.revoke(this.token.address, { from: owner });
-
-      const vestedPost = vestedAmount(amount, await time.latest(), this.start, this.cliffDuration, this.duration);
-
-      vestedPre.should.bignumber.equal(vestedPost);
-    });
-
-    it('should fail to be revoked a second time', async function () {
-      await this.vesting.revoke(this.token.address, { from: owner });
-      await shouldFail.reverting(this.vesting.revoke(this.token.address, { from: owner }));
-    });
-
-    function vestedAmount (total, now, start, cliffDuration, duration) {
-      return (now < start + cliffDuration) ? 0 : Math.round(total * (now - start) / duration);
-    }*/
   });
 });

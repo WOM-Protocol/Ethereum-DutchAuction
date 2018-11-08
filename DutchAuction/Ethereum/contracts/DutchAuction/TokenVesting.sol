@@ -57,6 +57,7 @@ contract TokenVesting is Ownable {
    }
 
    function registerPresaleVest(
+		 bool _revocable,
      address _who,
      uint128 _cliff,
      uint64 _duration)
@@ -70,6 +71,7 @@ contract TokenVesting is Ownable {
    returns (bool)
    {
      registered[_who] = true;
+		 userData[_who].revocable = _revocable;
      userData[_who].cliff = _cliff;
      userData[_who].duration = _duration;
      emit Registration(_who, _cliff, _duration);
@@ -91,6 +93,8 @@ contract TokenVesting is Ownable {
      emit TokensRecieved(_who, tokens, now);
    }
 
+
+	 // TODO; ensure that auction has transferred funds.
   /**
    * @notice Transfers vested tokens to beneficiary.
    */
@@ -120,7 +124,7 @@ contract TokenVesting is Ownable {
   }
 
 
-	function revoke(address _who) public only_owner {
+	function revoke(address _who, address _emergencyAddress) public only_owner not_locked {
 		require(registered[_who]);
     require(userData[_who].revocable);
     require(!revoked[_who]);
@@ -132,7 +136,7 @@ contract TokenVesting is Ownable {
 
     revoked[_who] = true;
 
-    tokenContract.transferFrom(auctionAddress, owner, _unreleased);
+    tokenContract.transferFrom(auctionAddress, _emergencyAddress, _unreleased);
 
     emit TokenVestingRevoked(_who, _unreleased);
   }
@@ -160,7 +164,7 @@ contract TokenVesting is Ownable {
 
     if (now < cliff(_who)) {
       return 0;
-    } else if (now >= start(_who).add(duration(_who)) || revocable(_who)) {
+    } else if (now >= start(_who).add(duration(_who)) || revoked[_who]) {
       return totalBalance;
     } else {
       return totalBalance.mul(now.sub(start(_who))).div(duration(_who));
