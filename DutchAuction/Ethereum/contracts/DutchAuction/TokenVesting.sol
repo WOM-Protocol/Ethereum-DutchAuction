@@ -1,273 +1,325 @@
-/* solium-disable security/no-block-members */
+pragma solidity 0.4.24;
 
-pragma solidity ^0.4.24;
+import "../Libraries/SafeMath.sol";
+import "../Libraries/Ownable.sol";
 
-import '../Libraries/SafeMath.sol';
-import '../Libraries/Ownable.sol';
 
 contract Token {
-	function transferFrom(address _from, address _to, uint _amount) public returns (bool success);
-	function approveAndCall(address _spender, uint _amount, bytes _data) public returns (bool success);
-  function allowance(address _tokenHolder, address _spender) public view returns (uint remaining);
+    function transferFrom(address _from, address _to, uint _amount) public returns (bool success);
+    function approveAndCall(address _spender, uint _amount, bytes _data) public returns (bool success);
+    function allowance(address _tokenHolder, address _spender) public view returns (uint remaining);
 }
+
 
 contract ApproveAndCallFallBack {
-  function receiveApproval(address from, uint tokens, address token, bytes data) public;
+    function receiveApproval(address from, uint tokens, address token, bytes data) public;
 }
 
+
+/**
+ * @title TokenVesting
+ * @author Connor Howe
+ * @dev This contract manages pre-sale tokens with particular vesting periods.
+ */
 contract TokenVesting is Ownable {
-  using SafeMath for *;
-
-  event TokensReleased(address indexed who, uint256 amount);
-  event Registration(address indexed who, uint256 indexed cliff, uint256 indexed duration);
-  event TokensRecieved(address indexed who, uint256 indexed amount, uint256 indexed timestamp);
-	event TokenVestingRevoked(address indexed who, uint256 indexed amount);
-	event AuctionAddressAssigned(address indexed auctionAddress);
-	event LockUpdated(bool indexed lockActive);
-	event EmergencyDrain(address indexed emergencyAddress, uint indexed amount);
-
-  event Released(uint256 amount);
-  event Revoked();
-
-  // beneficiary of tokens after they are released
-  address public tokenAddress;
-  address public auctionAddress;
-  Token public tokenContract;
-  bool public locked;
-
-	uint256 public totalAccounted;
-	uint256 public totalReleased;
-	bool public isFinalized;
-
-  struct UserData {
-    uint128 cliff;
-    uint256 start;
-    uint64 duration;
-    uint256 unreleased;
-    uint256 released;
-    bool revocable;
-  }
-
-  mapping (address => UserData) public userData;
-  mapping (address => bool) public revoked;
-  mapping (address => bool) public registered;
-
-   constructor(address _tokenWOM)
-   public
-   not_empty_address(_tokenWOM)
-   {
-     tokenAddress = _tokenWOM;
-     tokenContract = Token(_tokenWOM);
-   }
-
-   function registerPresaleVest(
-		 bool _revocable,
-     address _who,
-     uint128 _cliff,
-     uint64 _duration)
-     public
-     not_locked
-     only_owner
-     not_empty_uint(_cliff)
-     not_empty_uint(_duration)
-     not_empty_address(_who)
-     not_registered(_who)
-   returns (bool)
-   {
-     registered[_who] = true;
-		 userData[_who].revocable = _revocable;
-     userData[_who].cliff = _cliff;
-     userData[_who].duration = _duration;
-     emit Registration(_who, _cliff, _duration);
-     return true;
-   }
+    using SafeMath for uint256;
 
 
-   function receiveApproval(address from, uint tokens, address token, bytes data)
-   public {
-     require(data.length == 20);
-     require(msg.sender == tokenAddress);
-	 	 require(from == auctionAddress);
-	 	 require(token == tokenAddress);
-     address _who = bytesToAddress(data);
-     require(registered[_who]);
-		 totalAccounted = totalAccounted.add(tokens);
-     userData[_who].unreleased = tokens;
-     userData[_who].start = now;
-     emit TokensRecieved(_who, tokens, now);
-   }
+    /* ---- Events ---- */
+    event TokensReleased(address indexed who, uint256 amount);
+    event Registration(address indexed who, uint256 indexed cliff, uint256 indexed duration);
+    event TokensRecieved(address indexed who, uint256 indexed amount, uint256 indexed timestamp);
+    event TokenVestingRevoked(address indexed who, uint256 indexed amount);
+    event AuctionAddressAssigned(address indexed auctionAddress);
+    event LockUpdated(bool indexed lockActive);
+    event EmergencyDrain(address indexed emergencyAddress, uint indexed amount);
+    event Released(uint256 amount);
+    event Revoked();
 
 
-	 // TODO; ensure that auction has transferred funds.
-  /**
-   * @notice Transfers vested tokens to beneficiary.
-   */
-  function release() public {
-    require(registered[msg.sender]);
+    /* ---- Storage ---- */
+    address public tokenAddress;
+    address public auctionAddress;
+    Token public tokenContract;
 
-    uint256 _releaseAmount = _releasableAmount(msg.sender);
+    bool public locked;
+    bool public isFinalized;
+    uint256 public totalAccounted;
+    uint256 public totalReleased;
 
-    require(_releaseAmount > 0);
-
-    userData[msg.sender].released = userData[msg.sender].released.add(_releaseAmount);
-    userData[msg.sender].unreleased = userData[msg.sender].unreleased.sub(_releaseAmount);
-
-		if(_allReleased(msg.sender)){
-			delete registered[msg.sender];
-			delete userData[msg.sender];
-		}
-
-		totalReleased = totalReleased.add(_releaseAmount);
-
-    tokenContract.transferFrom(auctionAddress, msg.sender, _releaseAmount);
-
-		if(totalAccounted == totalReleased){
-			isFinalized = true;
-		}
-    emit TokensReleased(msg.sender, _releaseAmount);
-  }
-
-
-	function revoke(address _who, address _emergencyAddress) public only_owner not_locked {
-		require(registered[_who]);
-    require(userData[_who].revocable);
-    require(!revoked[_who]);
-
-		uint256 _unreleased = userData[_who].unreleased;
-		userData[_who].unreleased = 0;
-
-		totalAccounted = totalAccounted.sub(_unreleased);
-
-    revoked[_who] = true;
-
-    tokenContract.transferFrom(auctionAddress, _emergencyAddress, _unreleased);
-
-    emit TokenVestingRevoked(_who, _unreleased);
-  }
-
-  /**
-   * @dev Calculates the amount that has already vested but hasn't been released yet.
-   */
-  function _releasableAmount(address _who) private view returns (uint256) {
-    return _vestedAmount(_who).sub(userData[_who].released);
-  }
-
-	/**
-	 * @dev Determines if user has released all of their funds.
-	 */
-	function _allReleased(address _who) private view returns(bool) {
-		return (userData[_who].unreleased == 0);
-	}
-
-  /**
-   * @dev Calculates the amount that has already vested.
-   */
-  function _vestedAmount(address _who) private view returns (uint256) {
-    uint256 currentBalance = userData[_who].unreleased;
-    uint256 totalBalance = currentBalance.add(userData[_who].released);
-
-    if (now < cliff(_who)) {
-      return 0;
-    } else if (now >= start(_who).add(duration(_who)) || revoked[_who]) {
-      return totalBalance;
-    } else {
-      return totalBalance.mul(now.sub(start(_who))).div(duration(_who));
-      // 10,000,000 * ((1541550459 - 1573086459) /
+    struct UserData {
+        uint128 cliff;
+        uint256 start;
+        uint64 duration;
+        uint256 unreleased;
+        uint256 released;
+        bool revocable;
     }
-  }
 
-  /**
-   * @return the cliff time of the token vesting.
-   */
-  function cliff(address _who) public view returns(uint256) {
-    return userData[_who].cliff;
-  }
+    mapping (address => UserData) public userData;
+    mapping (address => bool) public revoked;
+    mapping (address => bool) public registered;
 
-  /**
-   * @return the start time of the token vesting.
-   */
-  function start(address _who) public view returns(uint256) {
-    return userData[_who].start;
-  }
+    /**
+     * @dev Initializes instance of Token Contract and assigns address.
+     * @param _tokenWOM Address of ERC20 token contract for WOM.
+     */
+    constructor(address _tokenWOM)
+        public
+        notEmptyAddress(_tokenWOM)
+    {
+        tokenAddress = _tokenWOM;
+        tokenContract = Token(_tokenWOM);
+    }
 
-  /**
-   * @return the duration of the token vesting.
-   */
-  function duration(address _who) public view returns(uint256) {
-    return userData[_who].duration;
-  }
+    /**
+    * @dev Fallback function that does not accept Ether.
+    */
+    function ()
+        public
+    {
+        revert();
+    }
 
-  /**
-   * @return true if the vesting is revocable.
-   */
-  function revocable(address _who) public view returns(bool) {
-    return userData[_who].revocable;
-  }
+   /**
+    * @dev Owner registers pre-sale amount and agreed vesting terms.
+    * @param _revocable Whether owner can revoke unreleased tokens if a breach in vesting contract.
+    * @param _who The persons address.
+    * @param _cliff Epoch seconds for cliff time.
+    * @param _duration Epoch seconds for duration of vest.
+    */
+    function registerPresaleVest(
+        bool _revocable,
+        address _who,
+        uint128 _cliff,
+        uint64 _duration
+    )
+        public
+        notLocked
+        only_owner
+        notEmptyUint(_cliff)
+        notEmptyUint(_duration)
+        notEmptyAddress(_who)
+        notRegistered(_who)
+    {
+        registered[_who] = true;
+        userData[_who].revocable = _revocable;
+        userData[_who].cliff = _cliff;
+        userData[_who].duration = _duration;
+        emit Registration(_who, _cliff, _duration);
+    }
 
-  /**
-   * @return the amount of tokens released.
-   */
-  function released(address _who) public view returns(uint256) {
-    return userData[_who].released;
-  }
+   /**
+    * @dev Called once SecondPriceAuction finalise() called, and then the ERC20 calls this function.
+    * @param from SecondPriceAuction address.
+    * @param tokens Amount of tokens that has been approved.
+    * @param token Address of ERC20 token.
+    * @param data Bytes conversion of pre-sale members address.
+    */
+    function receiveApproval(address from, uint tokens, address token, bytes data)
+        public
+    {
+        require(data.length == 20);
+        require(msg.sender == tokenAddress);
+        require(from == auctionAddress);
+        require(token == tokenAddress);
+        address _who = bytesToAddress(data);
+        require(registered[_who]);
+        totalAccounted = totalAccounted.add(tokens);
+        userData[_who].unreleased = tokens;
+        userData[_who].start = now;
+        emit TokensRecieved(_who, tokens, now);
+    }
 
-  /**
-   * @return the amount of tokens unreleased.
-   */
-  function unreleased(address _who) public view returns(uint256) {
-    return userData[_who].unreleased;
-  }
+   /**
+    * @dev Pre-sale members release their locked up funds.
+    */
+    function release()
+        public
+    {
+        require(registered[msg.sender]);
 
-	/**
-   * @return if all payments have been claimed.
-   */
-  function allFinalized() public view returns(bool) {
-    return isFinalized;
-  }
+        uint256 _releaseAmount = _releasableAmount(msg.sender);
 
-	/**
-	 * @return converts bytes to address.
-	 */
-  function bytesToAddress(bytes bys)
-  private
-  view
-  returns (address addr) {
-    assembly {
-      addr := mload(add(bys,20))
-      }
-  }
+        require(_releaseAmount > 0);
 
+        userData[msg.sender].released = userData[msg.sender].released.add(_releaseAmount);
+        userData[msg.sender].unreleased = userData[msg.sender].unreleased.sub(_releaseAmount);
 
-  /* Admin functionality */
-  function assignAuctionAddress(address _auctionAddress) public only_owner {
-    require(auctionAddress == address(0));
-    auctionAddress = _auctionAddress;
-		emit AuctionAddressAssigned(_auctionAddress);
-  }
+        if (_allReleased(msg.sender)) {
+            delete registered[msg.sender];
+            delete userData[msg.sender];
+        }
 
-  function setLock(bool _lock) public only_owner {
-    locked = _lock;
-		emit LockUpdated(_lock);
-  }
+        totalReleased = totalReleased.add(_releaseAmount);
 
-  function emergencyDrain(address _emergencyAddress) public only_owner is_locked {
-    tokenContract.transferFrom(auctionAddress, _emergencyAddress, totalAccounted);
-		emit EmergencyDrain(_emergencyAddress, totalAccounted);
-  }
+        tokenContract.transferFrom(auctionAddress, msg.sender, _releaseAmount);
 
+        if (totalAccounted == totalReleased) {
+            isFinalized = true;
+        }
+        emit TokensReleased(msg.sender, _releaseAmount);
+    }
 
-  modifier not_registered(address _who) { require (!registered[_who]); _; }
-  modifier not_empty_address(address _who) { require (_who != address(0)); _; }
-  modifier not_empty_uint(uint _uint) { require (_uint != 0); _; }
-  modifier not_locked() { require (!locked); _; }
-  modifier is_locked() { require (locked); _; }
+   /**
+    * @dev Owner revokes users remaining unreleased funds, and transfers to an emergency address.
+    * @param _who Pre-sale members address to revoke future releases.
+    * @param _emergencyAddress Address remainder of pre-sale users unreleased tokens will be transfered to.
+    */
+    function revoke(address _who, address _emergencyAddress)
+        public
+        only_owner
+        notLocked
+    {
+        require(registered[_who]);
+        require(userData[_who].revocable);
+        require(!revoked[_who]);
 
-  /**
-   * @dev Fallback function that does not accept Ether.
-   */
-  function ()
-  public
-   {
-      revert();
-  }
+        uint256 _unreleased = userData[_who].unreleased;
+        userData[_who].unreleased = 0;
+
+        totalAccounted = totalAccounted.sub(_unreleased);
+
+        revoked[_who] = true;
+
+        tokenContract.transferFrom(auctionAddress, _emergencyAddress, _unreleased);
+
+        emit TokenVestingRevoked(_who, _unreleased);
+    }
+
+    /* ---- View Getters ---- */
+   /**
+    * @return Epoch seconds of users Cliff.
+    */
+    function getCliff(address _who) public view returns(uint256) {
+        return userData[_who].cliff;
+    }
+
+   /**
+    * @return The start time of token vesting.
+    */
+    function getStart(address _who) public view returns(uint256) {
+        return userData[_who].start;
+    }
+
+   /**
+    * @return The duration of the token vesting.
+    */
+    function getDuration(address _who) public view returns(uint256) {
+        return userData[_who].duration;
+    }
+
+   /**
+    * @return True if the vesting is revocable.
+    */
+    function getRevocable(address _who) public view returns(bool) {
+        return userData[_who].revocable;
+    }
+
+   /**
+    * @return The amount of tokens released.
+    */
+    function getReleased(address _who) public view returns(uint256) {
+        return userData[_who].released;
+    }
+
+   /**
+    * @return The amount of tokens unreleased.
+    */
+    function getUnreleased(address _who) public view returns(uint256) {
+        return userData[_who].unreleased;
+    }
+
+   /**
+    * @return If all pre-sale tokens have been released/claimed..
+    */
+    function getFinalized() public view returns(bool) {
+        return isFinalized;
+    }
+
+    /* ---- Admin Functionality ---- */
+   /**
+    * @dev Owner assigns SecondPriceAuction address for lookups and transfers.
+    * @param _auctionAddress SecondPriceAuction address.
+    */
+    function setAuctionAddress(address _auctionAddress)
+        public
+        only_owner
+    {
+        require(auctionAddress == address(0));
+        auctionAddress = _auctionAddress;
+        emit AuctionAddressAssigned(_auctionAddress);
+    }
+
+   /**
+    * @dev Owner can lock the contract incase a vulnerability is found.
+    * @param _lock Bool assign lock.
+    */
+    function setLock(bool _lock)
+        public
+        only_owner
+    {
+        locked = _lock;
+        emit LockUpdated(_lock);
+    }
+
+   /**
+    * @dev Owner can drain all remaining unreleased pre-sale tokens incase a vulnerability is found.
+    * @param _emergencyAddress Address where total unrealeased tokens will be transferred too.
+    */
+    function emergencyDrain(address _emergencyAddress)
+        public
+        only_owner
+    {
+        require(locked);
+        uint256 balanceOf = tokenContract.allowance(auctionAddress, this);
+        tokenContract.transferFrom(auctionAddress, _emergencyAddress, balanceOf);
+        emit EmergencyDrain(_emergencyAddress, balanceOf);
+    }
+
+    /* ---- Private Functions ---- */
+   /**
+    * @dev Calculates the amount that has already vested but hasn't been released yet.
+    */
+    function _releasableAmount(address _who) private view returns (uint256) {
+        return _vestedAmount(_who).sub(userData[_who].released);
+    }
+
+   /**
+    * @dev Determines if user has released all of their funds.
+    */
+    function _allReleased(address _who) private view returns(bool) {
+        return (userData[_who].unreleased == 0);
+    }
+
+   /**
+    * @dev Calculates the amount that has already vested.
+    */
+    function _vestedAmount(address _who) private view returns (uint256) {
+        uint256 currentBalance = userData[_who].unreleased;
+        uint256 totalBalance = currentBalance.add(userData[_who].released);
+
+        if (now < getCliff(_who)) {
+            return 0;
+        } else if (now >= getStart(_who).add(getDuration(_who)) || revoked[_who]) {
+            return totalBalance;
+        } else {
+            return totalBalance.mul(now.sub(getStart(_who))).div(getDuration(_who));
+        }
+    }
+
+   /**
+    * @return converts bytes to address.
+    */
+    function bytesToAddress(bytes bys) private view returns (address addr) {
+        assembly {
+        addr := mload(add(bys, 20))
+        }
+    }
+
+    /* ---- Funcion Modifiers ---- */
+    modifier notRegistered(address _who) { require(!registered[_who]); _; }
+    modifier notEmptyAddress(address _who) { require(_who != address(0)); _; }
+    modifier notEmptyUint(uint _uint) { require(_uint != 0); _; }
+    modifier notLocked() { require(!locked); _; }
 }
