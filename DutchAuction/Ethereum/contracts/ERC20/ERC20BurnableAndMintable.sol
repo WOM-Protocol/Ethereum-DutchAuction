@@ -108,11 +108,13 @@ contract ERC20BurnableAndMintable is ERC20Interface{
     public
     returns (bool success) {
         require(_amount > 0);
-        allowed[msg.sender][_spender] = _amount;
+        allowed[msg.sender][_spender] = allowed[msg.sender][_spender].add(_amount);
         emit Approval(msg.sender, _spender, _amount);
         ApproveAndCallFallBack(_spender).receiveApproval(msg.sender, _amount, this, _data);
         return true;
     }
+
+    uint256 public fullAllowance;
 
     // ------------------------------------------------------------------------
     // Removes senders tokens from supply.

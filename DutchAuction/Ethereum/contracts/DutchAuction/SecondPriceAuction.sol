@@ -164,7 +164,6 @@ contract SecondPriceAuction {
 
 		uint total = buyins[_who].accounted;
 		uint tokens = (total / endPrice) * DIVISOR;
-		tokenTest = tokens;
 		totalFinalised += total;
 		bool presale = buyins[_who].presale;
 
@@ -184,8 +183,6 @@ contract SecondPriceAuction {
 			emit Retired();
 		}
 	}
-	uint public tokenTest;
-
 
 	// Return ether to participant if softcap is not met.
 	function claimRefund(address _who)

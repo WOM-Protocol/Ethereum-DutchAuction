@@ -32,5 +32,4 @@ module.exports = function(deployer, accounts) {
         constants.BEGIN_TIME,
         constants.AUCTION_CAP)
     });
-
 };
