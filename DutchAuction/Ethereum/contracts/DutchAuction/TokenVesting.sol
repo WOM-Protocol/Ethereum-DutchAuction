@@ -22,6 +22,10 @@ contract TokenVesting is Ownable {
   event Registration(address indexed who, uint256 indexed cliff, uint256 indexed duration);
   event TokensRecieved(address indexed who, uint256 indexed amount, uint256 indexed timestamp);
 	event TokenVestingRevoked(address indexed who, uint256 indexed amount);
+	event AuctionAddressAssigned(address indexed auctionAddress);
+	event LockUpdated(bool indexed lockActive);
+	event EmergencyDrain(address indexed emergencyAddress, uint indexed amount);
+
   event Released(uint256 amount);
   event Revoked();
 
@@ -222,13 +226,6 @@ contract TokenVesting is Ownable {
   }
 
 	/**
-	 * @return the current timestamp.
-	 */
-  function timeNow() public view returns(uint256) {
-    return now;
-  }
-
-	/**
 	 * @return converts bytes to address.
 	 */
   function bytesToAddress(bytes bys)
@@ -242,25 +239,23 @@ contract TokenVesting is Ownable {
 
 
   /* Admin functionality */
-  function assignAuctionAddress(address _auctionAddress) public only_owner returns(bool){
+  function assignAuctionAddress(address _auctionAddress) public only_owner {
     require(auctionAddress == address(0));
     auctionAddress = _auctionAddress;
-    return true;
+		emit AuctionAddressAssigned(_auctionAddress);
   }
 
-  function setLock(bool _lock) public only_owner returns(bool){
+  function setLock(bool _lock) public only_owner {
     locked = _lock;
-    return true;
+		emit LockUpdated(_lock);
   }
 
-  function emergencyDrain(address _emergencyAddress) public only_owner is_locked returns(bool){
-    uint256 balanceOf = tokenContract.allowance(auctionAddress, this);
-    tokenContract.transferFrom(auctionAddress, _emergencyAddress, balanceOf);
-    return true;
+  function emergencyDrain(address _emergencyAddress) public only_owner is_locked {
+    tokenContract.transferFrom(auctionAddress, _emergencyAddress, totalAccounted);
+		emit EmergencyDrain(_emergencyAddress, totalAccounted);
   }
 
 
-  modifier is_registered(address _who) { require (registered[_who]); _; }
   modifier not_registered(address _who) { require (!registered[_who]); _; }
   modifier not_empty_address(address _who) { require (_who != address(0)); _; }
   modifier not_empty_uint(uint _uint) { require (_uint != 0); _; }

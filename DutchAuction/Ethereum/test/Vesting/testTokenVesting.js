@@ -111,11 +111,13 @@ contract('TokenVesting', function ([_, owner, beneficiary]) {
 
 		it('finalize as PARTICIPANT_PRESALE', async () => {
 	    await this.auctionInstance.finalise(constants.PARTICIPANT_PRESALE);
+
     });
 
-		it('finalize as PARTICIPANT_PRESALE', async () => {
-	    await this.auctionInstance.finalise(constants.PARTICIPANT_PRESALE_TWO);
-			this.start = await time.latest();
+		it('finalize as PARTICIPANT_PRESALE_TWO', async () => {
+			const { receipt } = await this.auctionInstance.finalise(constants.PARTICIPANT_PRESALE_TWO);
+			const block = await ethGetBlock(receipt.blockNumber);
+			this.start = block.timestamp;
 			userData = await this.tokenVestingInstance.userData(constants.PARTICIPANT_PRESALE_TWO);
 			this.untouchedTotalTokens = userData[3];
  			assert.equal(await this.auctionInstance.isFinalized(), true);
@@ -134,9 +136,14 @@ contract('TokenVesting', function ([_, owner, beneficiary]) {
   });
 
   describe('function release()', () => {
+		it('attempt to release before cliff', async () => {
+			let not_before_cliff = this.tokenVestingInstance.release({from:constants.PARTICIPANT_PRESALE});
+			AssertRevert.assertRevert(not_before_cliff);
+		});
+
 		it('can be released after cliff', async () => {
       await time.increaseTo(this.start + this.cliffDuration + time.duration.weeks(1));
-      const { logs, receipt } = await this.tokenVestingInstance.release({from:constants.PARTICIPANT_PRESALE});
+    	await this.tokenVestingInstance.release({from:constants.PARTICIPANT_PRESALE});
       expectEvent.inLogs(logs, 'TokensReleased', {
         who: constants.PARTICIPANT_PRESALE,
         amount: await this.erc20Instance.balanceOf(constants.PARTICIPANT_PRESALE),
@@ -144,14 +151,13 @@ contract('TokenVesting', function ([_, owner, beneficiary]) {
       const block = await ethGetBlock(receipt.blockNumber);
       const releaseTime = block.timestamp;
 
-      const releasedAmount = new BigNumber(this.untouchedTotalTokens.mul(releaseTime - this.start).div(this.duration));
+      const releasedAmount = this.untouchedTotalTokens.mul(releaseTime - this.start).div(this.duration).floor();
       userData = await this.tokenVestingInstance.userData(constants.PARTICIPANT_PRESALE);
 
       assert.equal(Number(await this.erc20Instance.balanceOf(constants.PARTICIPANT_PRESALE)), Number(releasedAmount));
       assert.equal(Number(userData[4]), Number(releasedAmount));
       assert.equal(Number(userData[3]), Number(this.untouchedTotalTokens.sub(releasedAmount)));
     });
-
 
     it('should linearly release tokens during vesting period', async () => {
       const vestingPeriod = this.duration - this.cliffDuration;
@@ -163,11 +169,14 @@ contract('TokenVesting', function ([_, owner, beneficiary]) {
 
         await this.tokenVestingInstance.release({from:constants.PARTICIPANT_PRESALE});
 				let expecVest = this.untouchedTotalTokens * ((now-this.start) / this.duration);
-        const expectedVesting = (this.untouchedTotalTokens.mul(now - this.start).div(this.duration));
-				assert.equal(Number(await this.erc20Instance.balanceOf(constants.PARTICIPANT_PRESALE)), Number(expectedVesting));
+        const expectedVesting = (this.untouchedTotalTokens.mul(now - this.start).div(this.duration)).floor();
+				(await this.erc20Instance.balanceOf(constants.PARTICIPANT_PRESALE)).should.bignumber.equal(expectedVesting);
+				//assert.equal(Number(await this.erc20Instance.balanceOf(constants.PARTICIPANT_PRESALE)), Number(expectedVesting));
         userData = await this.tokenVestingInstance.userData(constants.PARTICIPANT_PRESALE);
 				if(i < 4){
-					assert.equal(Number(userData[4]), Number(expectedVesting));
+					(await this.tokenVestingInstance.released(constants.PARTICIPANT_PRESALE)).should.bignumber.equal(expectedVesting);
+					//await this.erc20Instance.balanceOf(constants.PARTICIPANT_PRESALE))
+					//assert.equal(Number(userData[4]), Number(expectedVesting));
 				}
 				else{
 					assert.equal(userData[4], 0);
@@ -175,7 +184,6 @@ contract('TokenVesting', function ([_, owner, beneficiary]) {
       }
       (await this.erc20Instance.balanceOf(constants.PARTICIPANT_PRESALE)).should.bignumber.equal(this.untouchedTotalTokens);
     });
-
 
 		it('should have released all after end', async () => {
 			await time.increaseTo(this.start + this.duration + time.duration.days(15));
@@ -191,6 +199,5 @@ contract('TokenVesting', function ([_, owner, beneficiary]) {
 			userData = await this.tokenVestingInstance.userData(constants.PARTICIPANT_PRESALE);
 			assert.equal(userData[0], 0);
 		});
-
   });
 });

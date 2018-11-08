@@ -9,27 +9,30 @@ const Migrations = artifacts.require('./Migrations.sol');
 const constants = require('../helpers/global.js');
 
 module.exports = function(deployer, accounts) {
-  deployer.deploy(Migrations);
-  deployer.deploy([SafeMath,Ownable]);
-  deployer.link(SafeMath, [ERC20BurnableAndMintable, TokenVesting]);
-  deployer.deploy([
-    [ERC20BurnableAndMintable,
-      constants.TOKEN_SUPPLY,
-      constants.TOKEN_NAME,
-      18,
-      constants.TOKEN_SYMBOL],
-    MultiCertifier]).then(function() {
-      return deployer.deploy(CertifierHandler, MultiCertifier.address, constants.TREASURY)
-    }).then(function() {
-      return deployer.deploy(TokenVesting, ERC20BurnableAndMintable.address)
-    }).then(function() {
-      return deployer.deploy(SecondPriceAuction,
-        MultiCertifier.address,
-        ERC20BurnableAndMintable.address,
-        TokenVesting.address,
-        constants.TREASURY,
-        constants.ADMIN,
-        constants.BEGIN_TIME,
-        constants.AUCTION_CAP)
-    });
+  deployer.deploy(Migrations).then(function() {
+  return deployer.deploy([SafeMath,Ownable])
+  }).then(function() {
+    return deployer.link(SafeMath, [ERC20BurnableAndMintable, TokenVesting]);
+  }).then(function() {
+    return deployer.deploy(ERC20BurnableAndMintable,
+        constants.TOKEN_SUPPLY,
+        constants.TOKEN_NAME,
+        18,
+        constants.TOKEN_SYMBOL)
+  }).then(function() {
+    return deployer.deploy(MultiCertifier)
+  }).then(function() {
+    return deployer.deploy(CertifierHandler, MultiCertifier.address, constants.TREASURY)
+  }).then(function() {
+    return deployer.deploy(TokenVesting, ERC20BurnableAndMintable.address)
+  }).then(function() {
+    return deployer.deploy(SecondPriceAuction,
+      MultiCertifier.address,
+      ERC20BurnableAndMintable.address,
+      TokenVesting.address,
+      constants.TREASURY,
+      constants.ADMIN,
+      constants.BEGIN_TIME,
+      constants.AUCTION_CAP)
+  });
 };

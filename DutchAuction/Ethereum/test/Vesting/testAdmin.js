@@ -61,6 +61,7 @@ contract('TokenVesting', function ([_, owner, beneficiary]) {
 		 it('correct register', async () => {
 			 await this.tokenVestingInstance.registerPresaleVest(false, constants.PARTICIPANT_PRESALE, this.cliffDuration, this.duration);
 			 await this.tokenVestingInstance.registerPresaleVest(true, constants.PARTICIPANT_PRESALE_TWO, this.cliffDuration, this.duration);
+			 assert.equal(await this.tokenVestingInstance.revocable(constants.PARTICIPANT_PRESALE_TWO),true);
 			 assert.equal(await this.tokenVestingInstance.registered(constants.PARTICIPANT_PRESALE), true);
 			 assert.equal(await this.tokenVestingInstance.registered(constants.PARTICIPANT_PRESALE_TWO), true);
      });
@@ -133,61 +134,38 @@ contract('TokenVesting', function ([_, owner, beneficiary]) {
     });
   });
 
-  describe('function release()', () => {
-		it('can be released after cliff', async () => {
-      await time.increaseTo(this.start + this.cliffDuration + time.duration.weeks(1));
-      const { logs, receipt } = await this.tokenVestingInstance.release({from:constants.PARTICIPANT_PRESALE});
-      expectEvent.inLogs(logs, 'TokensReleased', {
-        who: constants.PARTICIPANT_PRESALE,
-        amount: await this.erc20Instance.balanceOf(constants.PARTICIPANT_PRESALE),
-      });
-      const block = await ethGetBlock(receipt.blockNumber);
-      const releaseTime = block.timestamp;
-
-      const releasedAmount = new BigNumber(this.untouchedTotalTokens.mul(releaseTime - this.start).div(this.duration));
-      userData = await this.tokenVestingInstance.userData(constants.PARTICIPANT_PRESALE);
-
-      assert.equal(Number(await this.erc20Instance.balanceOf(constants.PARTICIPANT_PRESALE)), Number(releasedAmount));
-      assert.equal(Number(userData[4]), Number(releasedAmount));
-      assert.equal(Number(userData[3]), Number(this.untouchedTotalTokens.sub(releasedAmount)));
-    });
-
-    it('release() - catch is_registered modifier', async () => {
-			let is_registered = this.tokenVestingInstance.release({from:constants.PARTICIPANT_ONE});
-			AssertRevert.assertRevert(is_registered);
-    });
-  });
-
-	describe('admin functionality tokenVesting', () => {
-    it('function - assignAuctionAddress() catch require non-empty address', async () => {
+	describe('admin functionality', () => {
+		it('function - assignAuctionAddress() catch require non-empty address', async () => {
 			let require_address_0 = this.tokenVestingInstance.assignAuctionAddress(this.auctionInstance.address,{from:constants.OWNER});
 	    AssertRevert.assertRevert(require_address_0);
     });
 
-    it('function - emergencyDrain() catch not_locked modifier', async () => {
-			await this.tokenVestingInstance.emergencyDrain(constants.EMERGENCY_ADDRESS).catch(function(err){
-	      assert.include(err.message,'VM Exception');
-	    });
-    });
-
 		it('function - revoke() PARTICIPANT_PRESALE catch revocable require ', async () => {
-			let is_revocable = this.tokenVestingInstance.revoke(constants.PARTICIPANT_PRESALE, constants.EMERGENCY_ADDRESS, {from:constants.OWNER});
+			let is_revocable = this.tokenVestingInstance.revoke(constants.PARTICIPANT_PRESALE, constants.EMERGENCY_ADDRESS);
 			AssertRevert.assertRevert(is_revocable);
 		});
 
 		it('function - revoke() PARTICIPANT_PRESALE_TWO ', async () => {
 			userData = await this.tokenVestingInstance.userData(constants.PARTICIPANT_PRESALE_TWO);
 			totalAccounted = Number(await this.tokenVestingInstance.totalAccounted());
-			await this.tokenVestingInstance.revoke(constants.PARTICIPANT_PRESALE_TWO, constants.EMERGENCY_ADDRESS, {from:constants.OWNER});
+			await this.tokenVestingInstance.revoke(constants.PARTICIPANT_PRESALE_TWO, constants.EMERGENCY_ADDRESS);
 			assert.equal(await this.tokenVestingInstance.revoked(constants.PARTICIPANT_PRESALE_TWO), true);
 			assert.equal(Number(await this.erc20Instance.balanceOf(constants.EMERGENCY_ADDRESS)), Number(userData[3]));
 			assert.equal(Number(await this.tokenVestingInstance.totalAccounted()), totalAccounted - Number(userData[3]));
 			userData = await this.tokenVestingInstance.userData(constants.PARTICIPANT_PRESALE_TWO);
 			assert.equal(Number(userData[3]), 0);
 		});
+	})
+
+	describe('admin functionality lock & drain', () => {
+		it('function - emergencyDrain() catch not_locked modifier', async () => {
+			await this.tokenVestingInstance.emergencyDrain(constants.EMERGENCY_ADDRESS).catch(function(err){
+	      assert.include(err.message,'VM Exception');
+	    });
+    });
 
     it('function - setLock() lock ', async () => {
-			await this.tokenVestingInstance.setLock(true, {from:constants.OWNER});
+			await this.tokenVestingInstance.setLock(true);
 			assert.equal(await this.tokenVestingInstance.locked(), true);
 		});
 
@@ -195,14 +173,13 @@ contract('TokenVesting', function ([_, owner, beneficiary]) {
 			let locked = this.tokenVestingInstance.release({from:constants.PARTICIPANT_PRESALE});
 	    AssertRevert.assertRevert(locked);
 		});
-/*
-		it('function - emergencyDrain() when locked ', async () => {
-			let balanceBefore = await this.erc20Instance.allowance(this.auctionInstance.address, this.tokenVestingInstance.address);
 
+		it('function - emergencyDrain() when locked ', async () => {
+			allowance = await this.erc20Instance.allowance(this.auctionInstance.address, this.tokenVestingInstance.address);
+			balance = await this.erc20Instance.balanceOf(constants.EMERGENCY_ADDRESS);
 	    await this.tokenVestingInstance.emergencyDrain(constants.EMERGENCY_ADDRESS);
 	    assert.equal(await this.erc20Instance.allowance(this.auctionInstance.address, this.tokenVestingInstance.address), 0);
-	    assert.equal(Number(await this.erc20Instance.balanceOf(constants.EMERGENCY_ADDRESS)), Number(balanceBefore));
+	    assert.equal(Number(await this.erc20Instance.balanceOf(constants.EMERGENCY_ADDRESS)), Number(allowance)+Number(balance));
 		});
-		*/
   });
 });
