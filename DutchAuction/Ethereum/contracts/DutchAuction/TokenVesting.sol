@@ -18,7 +18,7 @@ contract ApproveAndCallFallBack {
 
 /**
  * @title TokenVesting
- * @author Connor Howe
+ * @author Connor Howe - ConnorBlockchain
  * @dev This contract manages pre-sale tokens with particular vesting periods.
  */
 contract TokenVesting is Ownable {
@@ -64,10 +64,7 @@ contract TokenVesting is Ownable {
      * @dev Initializes instance of Token Contract and assigns address.
      * @param _tokenWOM Address of ERC20 token contract for WOM.
      */
-    constructor(address _tokenWOM)
-        public
-        notEmptyAddress(_tokenWOM)
-    {
+    constructor(address _tokenWOM) public notEmptyAddress(_tokenWOM) {
         tokenAddress = _tokenWOM;
         tokenContract = Token(_tokenWOM);
     }
@@ -77,6 +74,7 @@ contract TokenVesting is Ownable {
     */
     function ()
         public
+        payable
     {
         revert();
     }
