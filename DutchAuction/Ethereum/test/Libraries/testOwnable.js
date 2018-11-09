@@ -8,9 +8,9 @@ contract('Libraries - testOwnable.js', async (accounts) => {
   });
 
   describe('function - transferOwnership()', () => {
-    it('catch only_owner modifier', async () => {
-      let only_owner = this.ownableInstance.transferOwnership(constants.ADMIN, {from:constants.NOT_OWNER});
-      AssertRevert.assertRevert(only_owner);
+    it('catch onlyOwner modifier', async () => {
+      let onlyOwner = this.ownableInstance.transferOwnership(constants.ADMIN, {from:constants.NOT_OWNER});
+      AssertRevert.assertRevert(onlyOwner);
     });
 
     it('catch require not empty address', async () => {
@@ -25,9 +25,9 @@ contract('Libraries - testOwnable.js', async (accounts) => {
   });
 
   describe('function - renounceOwnership()', () => {
-    it('catch only_owner modifier', async () => {
-      let only_owner = this.ownableInstance.renounceOwnership({from:constants.NOT_OWNER});
-      AssertRevert.assertRevert(only_owner);
+    it('catch onlyOwner modifier', async () => {
+      let onlyOwner = this.ownableInstance.renounceOwnership({from:constants.NOT_OWNER});
+      AssertRevert.assertRevert(onlyOwner);
     });
 
     it('renounce ownership from ADMIN', async () => {

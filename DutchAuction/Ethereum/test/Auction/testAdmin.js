@@ -23,57 +23,57 @@ contract('testAdmin.js', function(accounts) {
 	});
 
 	describe('function - inject()', () => {
-    it('catch only_admin modifier', async () => {
-			await this.auctionInstance.inject(constants.PARTICIPANT_ONE, 100, 15, {from:constants.PARTICIPANT_ONE}).catch(function(err){
-	      assert.include(err.message,'VM Exception');
-    	});
-		});
+	    it('catch onlyAdmin modifier', async () => {
+			await this.auctionInstance.inject(constants.PARTICIPANT_ONE, 100, 15, 			{from:constants.PARTICIPANT_ONE}).catch(function(err){
+		      assert.include(err.message,'VM Exception');
+	    	});
+			});
 
-    it('inject() PARTICIPANT_ONE 100 WEI 15% bonus', async () => {
+	    it('inject() PARTICIPANT_ONE 100 WEI 15% bonus', async () => {
 			await this.auctionInstance.inject(constants.PARTICIPANT_ONE, 100, 15, {from:constants.ADMIN});
-	    assert.equal(100, await this.auctionInstance.totalReceived(), 'Total recieved updated');
-	    assert.equal(115, await this.auctionInstance.totalAccounted(), 'Total accounted updated');
-	    let buyinsUser = await this.auctionInstance.buyins(constants.PARTICIPANT_ONE);
-	    assert.equal(115, buyinsUser[0], 'participant accounted updated');
-	    assert.equal(100, buyinsUser[1], 'participant accounted updated');
-	    assert.equal(true, buyinsUser[2], 'participant accounted updated');
-    });
+		    assert.equal(100, await this.auctionInstance.totalReceived(), 'Total recieved updated');
+		    assert.equal(115, await this.auctionInstance.totalAccounted(), 'Total accounted updated');
+		    let buyinsUser = await this.auctionInstance.buyins(constants.PARTICIPANT_ONE);
+		    assert.equal(115, buyinsUser[0], 'participant accounted updated');
+		    assert.equal(100, buyinsUser[1], 'participant accounted updated');
+		    assert.equal(true, buyinsUser[2], 'participant accounted updated');
+	    });
 	});
 
 	describe('function - uninject()', () => {
-    it('catch only_admin modifier', async () => {
+	    it('catch onlyAdmin modifier', async () => {
 			await this.auctionInstance.uninject(constants.PARTICIPANT_ONE, {from:constants.PARTICIPANT_ONE}).catch(function(err){
-	      assert.include(err.message,'VM Exception');
+		      assert.include(err.message,'VM Exception');
+		    });
 	    });
-    });
 
-    it('uninject() PARTICIPANT_ONE 100 WEI', async () => {
+	    it('uninject() PARTICIPANT_ONE 100 WEI', async () => {
 			await this.auctionInstance.uninject(constants.PARTICIPANT_ONE,{from:constants.ADMIN});
-	    assert.equal(0, await this.auctionInstance.totalReceived(), 'Total recieved updated');
-	    assert.equal(0, await this.auctionInstance.totalAccounted(), 'Total accounted updated');
-	    let buyinsUser = await this.auctionInstance.buyins(constants.PARTICIPANT_ONE);
-	    assert.equal(0, buyinsUser[0], 'participant account deleted');
-	    assert.equal(0, buyinsUser[1], 'participant account deleted');
-	    assert.equal(false, buyinsUser[2], 'participant account deleted');
-    });
+		    assert.equal(0, await this.auctionInstance.totalReceived(), 'Total recieved updated');
+		    assert.equal(0, await this.auctionInstance.totalAccounted(), 'Total accounted updated');
+		    let buyinsUser = await this.auctionInstance.buyins(constants.PARTICIPANT_ONE);
+		    assert.equal(0, buyinsUser[0], 'participant account deleted');
+		    assert.equal(0, buyinsUser[1], 'participant account deleted');
+		    assert.equal(false, buyinsUser[2], 'participant account deleted');
+	    });
 	});
 
 	describe('function - setHalted()', () => {
-    it('catch only_admin modifier', async () => {
+	    it('catch onlyAdmin modifier', async () => {
 			await this.auctionInstance.setHalted(true, {from:constants.PARTICIPANT_ONE}).catch(function(err){
-	      assert.include(err.message, 'VM Exception');
+		      assert.include(err.message, 'VM Exception');
+		    });
 	    });
-    });
 
-    it('setHalted() TRUE by ADMIN', async () => {
+	    it('setHalted() TRUE by ADMIN', async () => {
 			await this.auctionInstance.setHalted(true, {from:constants.ADMIN});
-	    assert.equal(true, await this.auctionInstance.halted(), 'halted set');
-    });
+		    assert.equal(true, await this.auctionInstance.halted(), 'halted set');
+	    });
 
-		it('setHalted() FALSE by ADMIN', async () => {
+			it('setHalted() FALSE by ADMIN', async () => {
 			await this.auctionInstance.setHalted(false, {from:constants.ADMIN});
 			assert.equal(false, await this.auctionInstance.halted(), 'halted set');
-    });
+	    });
 	});
 
 	describe('function setUSDWei() + setUSDSoftCap', () => {
@@ -81,15 +81,15 @@ contract('testAdmin.js', function(accounts) {
 			increaseTime(1000);
 		});
 
-    it('setusdWEI() to 4521 szabo from ADMIN', async () => {
-			await this.auctionInstance.setUSDWei(web3.toWei(4521,'szabo'), {from:constants.ADMIN});
-			assert.equal(Number(await this.auctionInstance.usdWEI()),  web3.toWei(4521,'szabo'));
-    });
+	    it('setusdWEI() to 4521 szabo from ADMIN', async () => {
+				await this.auctionInstance.setUSDWei(web3.toWei(4521,'szabo'), {from:constants.ADMIN});
+				assert.equal(Number(await this.auctionInstance.usdWEI()),  web3.toWei(4521,'szabo'));
+	    });
 
-		it('setUSDSoftCap() to 45201 ether from ADMIN', async () => {
-			await this.auctionInstance.setUSDSoftCap(web3.toWei(45201,'ether'), {from:constants.ADMIN});
-			assert.equal(Number(await this.auctionInstance.usdWEISoftCap()),  web3.toWei(45201,'ether'));
-    });
+			it('setUSDSoftCap() to 45201 ether from ADMIN', async () => {
+				await this.auctionInstance.setUSDSoftCap(web3.toWei(45201,'ether'), {from:constants.ADMIN});
+				assert.equal(Number(await this.auctionInstance.usdWEISoftCap()),  web3.toWei(45201,'ether'));
+	    });
 	});
 
 	describe('function setUSDWei() + setUSDSoftCap', () => {

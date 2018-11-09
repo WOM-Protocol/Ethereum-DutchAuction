@@ -7,61 +7,64 @@ pragma solidity 0.4.24;
  * functions, this simplifies the implementation of "user permissions".
  */
 contract Ownable {
-  address public owner;
 
+    /* ---- Events ---- */
+    event OwnershipRenounced(address indexed previousOwner);
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
-  event OwnershipRenounced(address indexed previousOwner);
-  event OwnershipTransferred(
-    address indexed previousOwner,
-    address indexed newOwner
-  );
+    /* ---- Storage ---- */
+    address public owner;
 
-  /**
-   *  Contracts should reject unexpected payments. Before Solidity 0.4.0, it was done manually
-   */
+   /**
+    * @dev The Ownable constructor sets the original `owner` of the contract to the sender
+    * account.
+    */
+    constructor() public {
+        owner = msg.sender;
+    }
 
-  /**
-   * @dev The Ownable constructor sets the original `owner` of the contract to the sender
-   * account.
-   */
-  constructor() public {
-    owner = msg.sender;
-  }
+   /**
+    * @dev Allows the current owner to relinquish control of the contract.
+    * @notice Renouncing to ownership will leave the contract without an owner.
+    * It will not be possible to call the functions with the `onlyOwner`
+    * modifier anymore.
+    */
+    function renounceOwnership()
+        public
+        onlyOwner
+    {
+        emit OwnershipRenounced(owner);
+        owner = address(0);
+    }
 
-  /**
-   * @dev Throws if called by any account other than the owner.
-   */
-  modifier only_owner() {
-    require(msg.sender == owner);
-    _;
-  }
+   /**
+    * @dev Allows the current owner to transfer control of the contract to a newOwner.
+    * @param _newOwner The address to transfer ownership to.
+    */
+    function transferOwnership(address _newOwner)
+        public
+        onlyOwner
+    {
+        _transferOwnership(_newOwner);
+    }
 
-  /**
-   * @dev Allows the current owner to relinquish control of the contract.
-   * @notice Renouncing to ownership will leave the contract without an owner.
-   * It will not be possible to call the functions with the `onlyOwner`
-   * modifier anymore.
-   */
-  function renounceOwnership() public only_owner {
-    emit OwnershipRenounced(owner);
-    owner = address(0);
-  }
+   /**
+    * @dev Transfers control of the contract to a newOwner.
+    * @param _newOwner The address to transfer ownership to.
+    */
+    function _transferOwnership(address _newOwner)
+        internal
+    {
+        require(_newOwner != address(0));
+        emit OwnershipTransferred(owner, _newOwner);
+        owner = _newOwner;
+    }
 
-  /**
-   * @dev Allows the current owner to transfer control of the contract to a newOwner.
-   * @param _newOwner The address to transfer ownership to.
-   */
-  function transferOwnership(address _newOwner) public only_owner {
-    _transferOwnership(_newOwner);
-  }
-
-  /**
-   * @dev Transfers control of the contract to a newOwner.
-   * @param _newOwner The address to transfer ownership to.
-   */
-  function _transferOwnership(address _newOwner) internal {
-    require(_newOwner != address(0));
-    emit OwnershipTransferred(owner, _newOwner);
-    owner = _newOwner;
-  }
+   /**
+    * @dev Throws if called by any account other than the owner.
+    */
+    modifier onlyOwner() {
+        require(msg.sender == owner);
+        _;
+    }
 }

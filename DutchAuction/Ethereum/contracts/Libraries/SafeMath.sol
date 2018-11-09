@@ -1,5 +1,6 @@
 pragma solidity 0.4.24;
 
+
 /**
  * @title SafeMath
  * @dev Math operations with safety checks that revert on error
@@ -15,7 +16,7 @@ library SafeMath {
       // See: https://github.com/OpenZeppelin/openzeppelin-solidity/pull/522
         if (a == 0) {
             return 0;
-          }
+        }
 
         uint256 c = a * b;
         require(c / a == b);

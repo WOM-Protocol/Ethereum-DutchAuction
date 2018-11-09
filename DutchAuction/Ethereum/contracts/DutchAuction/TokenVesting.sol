@@ -70,10 +70,6 @@ contract TokenVesting is Ownable {
     }
 
    /**
-    *  Contracts should reject unexpected payments. Before Solidity 0.4.0, it was done manually
-    */
-
-   /**
     * @dev Owner registers pre-sale amount and agreed vesting terms.
     * @param _revocable Whether owner can revoke unreleased tokens if a breach in vesting contract.
     * @param _who The persons address.
@@ -88,7 +84,7 @@ contract TokenVesting is Ownable {
     )
         public
         notLocked
-        only_owner
+        onlyOwner
         notEmptyUint(_cliff)
         notEmptyUint(_duration)
         notEmptyAddress(_who)
@@ -160,7 +156,7 @@ contract TokenVesting is Ownable {
     */
     function revoke(address _who, address _emergencyAddress)
         public
-        only_owner
+        onlyOwner
         notLocked
     {
         require(registered[_who]);
@@ -236,7 +232,7 @@ contract TokenVesting is Ownable {
     */
     function setAuctionAddress(address _auctionAddress)
         public
-        only_owner
+        onlyOwner
     {
         require(auctionAddress == address(0));
         auctionAddress = _auctionAddress;
@@ -249,7 +245,7 @@ contract TokenVesting is Ownable {
     */
     function setLock(bool _lock)
         public
-        only_owner
+        onlyOwner
     {
         locked = _lock;
         emit LockUpdated(_lock);
@@ -261,7 +257,7 @@ contract TokenVesting is Ownable {
     */
     function emergencyDrain(address _emergencyAddress)
         public
-        only_owner
+        onlyOwner
     {
         require(locked);
         uint256 balanceOf = tokenContract.allowance(auctionAddress, this);

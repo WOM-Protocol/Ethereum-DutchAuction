@@ -21,7 +21,7 @@ contract('testAuction.js', function(accounts) {
 		this.auctionInstance = await SecondPriceAuction.deployed();
 	});
 
-	describe('catch when_active modifier', () => {
+	describe('catch whenActive modifier', () => {
 		it('function - currentPrice()', async () => {
 			await this.auctionInstance.currentPrice().catch(function(err){
 	      assert.include(err.message,'VM Exception');

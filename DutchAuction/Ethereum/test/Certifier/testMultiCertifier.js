@@ -9,9 +9,9 @@ contract('Certifier - MultiCertifier.sol', function(accounts) {
   });
 
   describe('function - addDelegate()', () => {
-    it('catch only_owner modifier', async () => {
-      let only_owner = this.multiCertifierInstance.addDelegate(constants.ADMIN, {from:constants.PARTICIPANT_ONE});
-      AssertRevert.assertRevert(only_owner);
+    it('catch onlyOwner modifier', async () => {
+      let onlyOwner = this.multiCertifierInstance.addDelegate(constants.ADMIN, {from:constants.PARTICIPANT_ONE});
+      AssertRevert.assertRevert(onlyOwner);
     });
 
     it('set delegate to be ADMIN', async () => {
@@ -22,9 +22,9 @@ contract('Certifier - MultiCertifier.sol', function(accounts) {
   });
 
   describe('function - removeDelegate()', () => {
-    it('catch only_owner modifier', async () => {
-      let only_owner = this.multiCertifierInstance.removeDelegate(constants.ADMIN, {from:constants.PARTICIPANT_ONE});
-      AssertRevert.assertRevert(only_owner);
+    it('catch onlyOwner modifier', async () => {
+      let onlyOwner = this.multiCertifierInstance.removeDelegate(constants.ADMIN, {from:constants.PARTICIPANT_ONE});
+      AssertRevert.assertRevert(onlyOwner);
     });
 
     it('remove delegate ADMIN', async () => {

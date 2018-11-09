@@ -176,7 +176,7 @@ contract CertifierHandler is Ownable {
   /// @notice Send the current balance to the treasury.
   /// Could be needed if value is sent outside of the `claim`
   /// method (eg. contract suicide)
-  function drain () external only_owner {
+  function drain () external onlyOwner {
     emit Drained(address(this).balance);
     treasury.transfer(address(this).balance);
   }
@@ -185,7 +185,7 @@ contract CertifierHandler is Ownable {
   /// must be modified. Only the owner of the contract
   /// can execute this method.
   /// @param _fee The new fee
-  function setFee (uint _fee) external only_owner {
+  function setFee (uint _fee) external onlyOwner {
     emit NewFee(fee, _fee);
     fee = _fee;
   }
@@ -195,7 +195,7 @@ contract CertifierHandler is Ownable {
   /// often ; but could be useful for re-deployment of
   /// new contract for example.
   /// @param _who The account to lock.
-  function setLocked (address _who) external only_owner {
+  function setLocked (address _who) external onlyOwner {
     emit Locked(_who);
     locked[_who] = true;
   }
@@ -204,7 +204,7 @@ contract CertifierHandler is Ownable {
   /// the payments are forwarded to. Only the owner of the contract
   /// can execute this method.
   /// @param _treasury The new treasury address
-  function setTreasury (address _treasury) external only_owner {
+  function setTreasury (address _treasury) external onlyOwner {
     emit NewTreasury(treasury, _treasury);
     treasury = _treasury;
   }

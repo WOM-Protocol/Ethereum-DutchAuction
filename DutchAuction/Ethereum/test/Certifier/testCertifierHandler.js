@@ -11,9 +11,9 @@ contract('Certifier - CertifierHandler.sol', function(accounts) {
 	});
 
 	describe('function - setFee()', () => {
-    it('catch only_owner modifier', async () => {
-			let only_owner = this.certifierHandlerInstance.setFee(1,{from:constants.NOT_OWNER});
-	    AssertRevert.assertRevert(only_owner);
+    it('catch onlyOwner modifier', async () => {
+			let onlyOwner = this.certifierHandlerInstance.setFee(1,{from:constants.NOT_OWNER});
+	    AssertRevert.assertRevert(onlyOwner);
 			assert.equal(await this.certifierHandlerInstance.fee(), 0);
     });
 
@@ -24,9 +24,9 @@ contract('Certifier - CertifierHandler.sol', function(accounts) {
   });
 
 	describe('function - setTreasury()', () => {
-		it('catch only_owner modifier', async () => {
-			let only_owner = this.certifierHandlerInstance.setTreasury(constants.ADMIN,{from:constants.NOT_OWNER});
-	    AssertRevert.assertRevert(only_owner);
+		it('catch onlyOwner modifier', async () => {
+			let onlyOwner = this.certifierHandlerInstance.setTreasury(constants.ADMIN,{from:constants.NOT_OWNER});
+	    AssertRevert.assertRevert(onlyOwner);
 	    assert.equal(await this.certifierHandlerInstance.treasury(), constants.TREASURY);
 		});
 
@@ -42,9 +42,9 @@ contract('Certifier - CertifierHandler.sol', function(accounts) {
 	});
 
 	describe('function - setLocked()', () => {
-		it('catch only_owner modifier', async () => {
-			let only_owner = this.certifierHandlerInstance.setLocked(constants.LOCKED_ACCOUNT,{from:constants.NOT_OWNER});
-	    AssertRevert.assertRevert(only_owner);
+		it('catch onlyOwner modifier', async () => {
+			let onlyOwner = this.certifierHandlerInstance.setLocked(constants.LOCKED_ACCOUNT,{from:constants.NOT_OWNER});
+	    AssertRevert.assertRevert(onlyOwner);
 	    assert.equal(await this.certifierHandlerInstance.locked(constants.LOCKED_ACCOUNT), false);
 		});
 

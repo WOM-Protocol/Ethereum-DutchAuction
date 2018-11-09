@@ -59,8 +59,8 @@ contract MultiCertifier is Certifier, Ownable {
 
 	function certified(address _who) public view returns (bool) { return certs[_who].active; }
 	function getCertifier(address _who) public view returns (address) { return certs[_who].certifier; }
-	function addDelegate(address _new) public only_owner { delegates[_new] = true; }
-	function removeDelegate(address _old) public only_owner { delete delegates[_old]; }
+	function addDelegate(address _new) public onlyOwner { delegates[_new] = true; }
+	function removeDelegate(address _old) public onlyOwner { delete delegates[_old]; }
 
 	mapping (address => Certification) public certs;
 	mapping (address => bool) public delegates;

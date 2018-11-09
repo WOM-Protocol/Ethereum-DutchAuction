@@ -37,30 +37,30 @@ contract('testContribution.js', function(accounts) {
 			assert.equal(await this.auctionInstance.recoverAddr(hashedMessage, this.v, this.r, this.s), constants.PARTICIPANT_ONE);
 		});
 
-		it('catch when_not_halted modifier', async () => {
+		it('catch whenNotHalted modifier', async () => {
 			await this.auctionInstance.setHalted(true, {from:constants.ADMIN});
 			assert.equal(await this.auctionInstance.halted(), true);
-			let when_not_halted = this.auctionInstance.buyin(this.v, this.r, this.s, {from:constants.PARTICIPANT_ONE, value: 5000000000000000});
-			AssertRevert.assertRevert(when_not_halted);
+			let whenNotHalted = this.auctionInstance.buyin(this.v, this.r, this.s, {from:constants.PARTICIPANT_ONE, value: 5000000000000000});
+			AssertRevert.assertRevert(whenNotHalted);
 			await this.auctionInstance.setHalted(false, {from:constants.ADMIN});
 			assert.equal(await this.auctionInstance.halted(), false);
 		});
 
-		it('catch not_pre_sale_member modifier', async () => {
+		it('catch notPreSaleMember modifier', async () => {
 			await this.auctionInstance.inject(constants.PARTICIPANT_ONE, 10000, 10, {from:constants.ADMIN});
 			let buyinsUser = await this.auctionInstance.buyins(constants.PARTICIPANT_ONE);
 			assert.equal(buyinsUser[2], true);
-			let not_pre_sale_member = this.auctionInstance.buyin(this.v, this.r, this.s, {from:constants.PARTICIPANT_ONE, value: 5000000000000000});
-			AssertRevert.assertRevert(not_pre_sale_member);
+			let notPreSaleMember = this.auctionInstance.buyin(this.v, this.r, this.s, {from:constants.PARTICIPANT_ONE, value: 5000000000000000});
+			AssertRevert.assertRevert(notPreSaleMember);
 			await this.auctionInstance.uninject(constants.PARTICIPANT_ONE, {from:constants.ADMIN});
 			buyinsUser = await this.auctionInstance.buyins(constants.PARTICIPANT_ONE);
 			assert.equal(buyinsUser[2], false);
 		});
 
-		it('catch when_active modifier', async () => {
+		it('catch whenActive modifier', async () => {
 			assert.equal(await this.auctionInstance.isActive(), false);
-			let when_active = this.auctionInstance.buyin(this.v, this.r, this.s, {from:constants.PARTICIPANT_ONE, value: 5000000000000000});
-			AssertRevert.assertRevert(when_active);
+			let whenActive = this.auctionInstance.buyin(this.v, this.r, this.s, {from:constants.PARTICIPANT_ONE, value: 5000000000000000});
+			AssertRevert.assertRevert(whenActive);
 		});
 
 		it('increase time so auction starts', async () => {
@@ -68,27 +68,27 @@ contract('testContribution.js', function(accounts) {
 			assert.equal(Number(await this.auctionInstance.currentPrice()), aConstants.USDWEI);
 		});
 
-		it('catch only_eligible modifier', async () => {
-			let only_eligible_recoverAddr = this.auctionInstance.buyin(this.v+1, this.r, this.s, {from:constants.PARTICIPANT_ONE, value: 5000000000000000});
-			AssertRevert.assertRevert(only_eligible_recoverAddr);
+		it('catch onlyEligible modifier', async () => {
+			let onlyEligible_recoverAddr = this.auctionInstance.buyin(this.v+1, this.r, this.s, {from:constants.PARTICIPANT_ONE, value: 5000000000000000});
+			AssertRevert.assertRevert(onlyEligible_recoverAddr);
 		});
 
-		it('catch only_eligible recoverAddr() modifier', async () => {
-			let only_eligible_recoverAddr = this.auctionInstance.buyin(this.v+1, this.r, this.s, {from:constants.PARTICIPANT_ONE, value: 5000000000000000});
-			AssertRevert.assertRevert(only_eligible_recoverAddr);
+		it('catch onlyEligible recoverAddr() modifier', async () => {
+			let onlyEligible_recoverAddr = this.auctionInstance.buyin(this.v+1, this.r, this.s, {from:constants.PARTICIPANT_ONE, value: 5000000000000000});
+			AssertRevert.assertRevert(onlyEligible_recoverAddr);
 		});
 
-		it('catch only_eligible certified() modifier', async () => {
-			let only_eligible_certified = this.auctionInstance.buyin(this.v, this.r, this.s, {from:constants.PARTICIPANT_ONE, value: 5000000000000000});
-			AssertRevert.assertRevert(only_eligible_certified);
+		it('catch onlyEligible certified() modifier', async () => {
+			let onlyEligible_certified = this.auctionInstance.buyin(this.v, this.r, this.s, {from:constants.PARTICIPANT_ONE, value: 5000000000000000});
+			AssertRevert.assertRevert(onlyEligible_certified);
 			await this.multiCertifierInstance.certify(constants.PARTICIPANT_ONE);
 			let certs = await this.multiCertifierInstance.certs(constants.PARTICIPANT_ONE);
 			assert.equal(certs[1], true);
 		});
 
-		it('catch only_eligible dust() modifier', async () => {
-			let only_eligible_dust = this.auctionInstance.buyin(this.v, this.r, this.s, {from:constants.PARTICIPANT_ONE, value: this.DUST});
-			AssertRevert.assertRevert(only_eligible_dust);
+		it('catch onlyEligible dust() modifier', async () => {
+			let onlyEligible_dust = this.auctionInstance.buyin(this.v, this.r, this.s, {from:constants.PARTICIPANT_ONE, value: this.DUST});
+			AssertRevert.assertRevert(onlyEligible_dust);
 		});
 
 		it('function eligibleCall()', async () => {
