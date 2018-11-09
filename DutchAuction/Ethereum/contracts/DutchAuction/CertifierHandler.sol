@@ -97,10 +97,9 @@ contract CertifierHandler is Ownable {
     treasury = _treasury;
   }
 
-  /// @notice Fallback function. Should not be called.
-  function () public {
-    assert(false);
-  }
+  /**
+   *  Contracts should reject unexpected payments. Before Solidity 0.4.0, it was done manually
+   */
 
   /// PUBLIC METHODS
 

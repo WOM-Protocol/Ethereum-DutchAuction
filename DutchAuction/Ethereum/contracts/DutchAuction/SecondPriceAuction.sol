@@ -75,9 +75,6 @@ contract SecondPriceAuction {
 		endTime = beginTime + 15 days;
 	}
 
-	// No default function, entry-level users
-	function() public { assert(false); }
-
 	// Public interaction:
 
 	/// Buyin function. Throws if the sale is not active and when refund would be needed.

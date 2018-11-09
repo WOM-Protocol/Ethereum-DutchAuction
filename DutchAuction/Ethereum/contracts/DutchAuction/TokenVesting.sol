@@ -69,15 +69,9 @@ contract TokenVesting is Ownable {
         tokenContract = Token(_tokenWOM);
     }
 
-    /**
-    * @dev Fallback function that does not accept Ether.
+   /**
+    *  Contracts should reject unexpected payments. Before Solidity 0.4.0, it was done manually
     */
-    function ()
-        public
-        payable
-    {
-        revert();
-    }
 
    /**
     * @dev Owner registers pre-sale amount and agreed vesting terms.

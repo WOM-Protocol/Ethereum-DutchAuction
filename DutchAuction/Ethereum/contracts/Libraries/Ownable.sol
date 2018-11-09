@@ -16,6 +16,9 @@ contract Ownable {
     address indexed newOwner
   );
 
+  /**
+   *  Contracts should reject unexpected payments. Before Solidity 0.4.0, it was done manually
+   */
 
   /**
    * @dev The Ownable constructor sets the original `owner` of the contract to the sender
@@ -60,14 +63,5 @@ contract Ownable {
     require(_newOwner != address(0));
     emit OwnershipTransferred(owner, _newOwner);
     owner = _newOwner;
-  }
-
-  /**
-   * @dev Fallback function that does not accept Ether.
-   */
-  function ()
-  public
-   {
-      revert();
   }
 }

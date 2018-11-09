@@ -52,6 +52,9 @@ contract ERC20BurnableAndMintable is ERC20Interface{
         emit Transfer(address(0), msg.sender, _initialAmount);    // Transfer event indicating token creation
     }
 
+    /**
+     *  Contracts should reject unexpected payments. Before Solidity 0.4.0, it was done manually
+     */
 
     // ------------------------------------------------------------------------
     // Transfer _amount tokens to address _to
@@ -194,16 +197,6 @@ contract ERC20BurnableAndMintable is ERC20Interface{
         return allowed[_tokenHolder][_spender];
     }
 
-
-    // ------------------------------------------------------------------------
-    // Fallback function
-    // Won't accept ETH
-    // ------------------------------------------------------------------------
-    function ()
-    public
-     {
-        revert();
-    }
 
     // ------------------------------------------------------------------------
     // Event: Logs the amount of tokens burned and the address of the burner
