@@ -26,37 +26,41 @@ contract Certifier {
  * @dev Simple modified second price auction contract. Price starts high and monotonically decreases
  until all tokens are sold at the current price with currently received funds. The price curve
  has been chosen to resemble a logarithmic curve and produce a reasonable auction timeline.
+ Requires softcap to be met, before finalisation, and if finalisation is not met a refund will be available.
  */
 contract SecondPriceAuction {
-// Events:
-
-    /// Someone bought in at a particular max-price.
+    /* ---- Events ---- */
+    /// @dev Someone bought in at a particular max-price.
     event Buyin(address indexed who, uint accounted, uint received, uint price);
 
-    /// Admin injected a purchase.
+    /// @dev Admin injected a purchase.
     event Injected(address indexed who, uint accounted, uint received);
 
-    /// Admin uninjected a purchase.
+    /// @dev Admin uninjected a purchase.
     event Uninjected(address indexed who);
 
-    /// At least 5 minutes has passed since last Ticked event.
-    event Ticked(uint era, uint received, uint accounted);
-
-    /// The sale just ended with the current price.
+    /// @dev The sale just ended with the current price.
     event Ended(uint price);
 
-    /// Finalised the purchase for `who`, who has been given `tokens` tokens.
+    /// @dev Finalised the purchase for `who`, who has been given `tokens` tokens.
     event Finalised(address indexed who, uint tokens);
 
-    /// Sale did not reach softcap.
+    /// @dev Sale did not reach softcap.
     event SoftCapNotReached(uint indexed totalReceived, uint usdWEISoftCap, address indexed _who);
 
-    /// Auction is over. All accounts finalised.
+    /// @dev Auction is over. All accounts finalised.
     event Retired();
 
-    // Constructor:
-    /// Simple constructor.
-    /// Token cap should take be in whole tokens, not smallest divisible units.
+   /**
+    * @dev Initializes instance of Token & Certifier contract, and assigns all values.
+    * @param _certifierContract Address of Certifier contract.
+    * @param _tokenContract Address of ERC20 contract.
+    * @param _tokenVesting Address of TokenVesting contract.
+    * @param _treasury Address of treasury.
+    * @param _admin Address of admin.
+    * @param _beginTime Start time of dutch auction.
+    * @param _tokenCap Token cap in whole tokens (decimals).
+    */
     constructor(
         address _certifierContract,
         address _tokenContract,
@@ -76,8 +80,13 @@ contract SecondPriceAuction {
         endTime = beginTime + 15 days;
     }
 
-    // Public interaction:
-    /// Buyin function. Throws if the sale is not active and when refund would be needed.
+    /* ---- Public Functions ---- */
+   /**
+    * @dev User buys in to auction, and throws if not active and when refund needed.
+    * @param v
+    * @param r
+    * @param s
+    */
     function buyin(uint8 v, bytes32 r, bytes32 s)
         public
         payable
@@ -113,7 +122,12 @@ contract SecondPriceAuction {
         emit Buyin(msg.sender, accounted, msg.value, price);
     }
 
-    /// Like buyin except no payment required and bonus automatically given.
+   /**
+    * @dev Similar to buyin except no payment reqired and bonus automatically given, only callable by admin.
+    * @param _who Address of pre-sale member.
+    * @param _received Amount of ether that the pre-sale member contributed.
+    * @param _appliedBonus Bonus agreed in pre-sale agreement.
+    */
     function inject(address _who, uint128 _received, uint128 _appliedBonus)
         public
         onlyAdmin
@@ -131,7 +145,10 @@ contract SecondPriceAuction {
         emit Injected(_who, accounted, _received);
     }
 
-    /// Reverses a previous `inject` command.
+   /**
+    * @dev Reverses previous injection function, only callable by admin.
+    * @param _who Address of pre-sale member to reverse injection.
+    */
     function uninject(address _who)
         public
         onlyAdmin
@@ -143,7 +160,11 @@ contract SecondPriceAuction {
         emit Uninjected(_who);
     }
 
-    /// Mint tokens for a particular participant.
+   /**
+    * @dev Calculates final token price, and transfers tokens to _who when
+    softcap and time met.  If presale member, approveAndCall will auto call TokenVesting contract.
+    * @param _who Address of pre-sale member to transfer tokens
+    */
     function finalise(address _who)
         public
         whenNotHalted
@@ -177,7 +198,10 @@ contract SecondPriceAuction {
         }
     }
 
-    // Return ether to participant if softcap is not met.
+   /**
+    * @dev Returns ether to participant if softcap is not met.
+    * @param _who Address of pre-sale member to refund tokens to.
+    */
     function claimRefund(address _who)
         public
         whenNotHalted
@@ -198,8 +222,11 @@ contract SecondPriceAuction {
         }
     }
 
-    // Admin interaction:
-    /// Emergency function to update usdWEI price if bull run occurs
+    /* ---- Admin Functionality ---- */
+   /**
+    * @dev Admin can change stored USDWEI value of ether if bull run occurs.
+    * @param _usdWEI Amount of WEI to 1 USD.
+    */
     function setUSDWei(uint _usdWEI)
         public
         onlyAdmin
@@ -208,7 +235,10 @@ contract SecondPriceAuction {
         usdWEI = _usdWEI;
     }
 
-    /// Emergency function to update usdWEI soft cap if bull run occurs
+   /**
+    * @dev Admin can change softcap USDWEI value of 10m if bull run occurs.
+    * @param _usdWEI Amount of WEI to 10m USD.
+    */
     function setUSDSoftCap(uint _usdWEISoftCap)
         public
         onlyAdmin
@@ -217,7 +247,10 @@ contract SecondPriceAuction {
         usdWEISoftCap = _usdWEISoftCap;
     }
 
-    /// Emergency function to pause buy-in and finalisation.
+   /**
+    * @dev Admin emergency function to pause buy-in and finalisation.
+    * @param _halted Bool to transition contract to halted state or not.
+    */
     function setHalted(bool _halted)
         public
         onlyAdmin
@@ -225,7 +258,9 @@ contract SecondPriceAuction {
         halted = _halted;
     }
 
-    /// Emergency function to drain the contract of any funds.
+   /**
+    * @dev Admin emergency function to drain the contract of any funds.
+    */
     function drain()
         public
         onlyAdmin
@@ -261,6 +296,9 @@ contract SecondPriceAuction {
     /// The current price for a single indivisible part of a token. If a buyin happens now, this is
     /// the highest price per indivisible token part that the buyer will pay. This doesn't
     /// include the discount which may be available.
+   /**
+    * @return The current price of 1 token in usdWEI.
+    */
     function currentPrice()
         public view
         whenActive
@@ -272,6 +310,9 @@ contract SecondPriceAuction {
         return (usdWEI * 33200 / (hoursPassed() + 80) - usdWEI * 65) / 350;
     }
 
+   /**
+    * @return Amount of hours that the auction has passed.
+    */
     function hoursPassed()
         public
         view
@@ -280,7 +321,9 @@ contract SecondPriceAuction {
         return (now - beginTime) / 1 hours;
     }
 
-    /// Returns the total indivisible token parts available for purchase right now.
+   /**
+    * @return Total indivisible token parts available for purchase right now.
+    */
     function tokensAvailable()
         public
         view
@@ -294,8 +337,9 @@ contract SecondPriceAuction {
         return tokenCap - _currentCap;
     }
 
-    /// The largest purchase than can be made at present, not including any
-    /// discount.
+   /**
+    * @return The largest purchase that can be made at present, not including any discount.
+    */
     function maxPurchase()
         public
         view
@@ -305,8 +349,11 @@ contract SecondPriceAuction {
         return tokenCap * currentPrice() - totalAccounted;
     }
 
-    /// Get the number of `tokens` that would be given if the sender were to
-    /// spend `_value` now. Also tell you what `refund` would be given, if any.
+   /**
+    * @dev Amount of tokens that would be given to the sender if they were to spent _value now.
+    * @param _value Ether amount of potential purchase.
+    * @return Amount of tokens.
+    */
     function theDeal(uint _value)
         public
         view
@@ -323,7 +370,11 @@ contract SecondPriceAuction {
         refund = (tokens > available);
     }
 
-    /// Any applicable bonus to `_value`.
+   /**
+    * @dev If bonus is still occuring, and if so what would the token amount be once bonus applied.
+    * @param _value Ether amount of potential purchase.
+    * @return Amount of tokens + bonus.
+    */
     function bonus(uint _value)
         public
         view
@@ -333,28 +384,50 @@ contract SecondPriceAuction {
         return _value * uint(currentBonus) / 100;
     }
 
+   /**
+    * @return The current time.
+    */
     function currentTime() public view returns (uint) { return now;}
 
-    /// True if the sale is ongoing.
+   /**
+    * @return True if the sale is ongoing.
+    */
     function isActive() public view returns (bool) { return now >= beginTime && now < endTime; }
 
-    /// True if all buyins have finalised.
+   /**
+    * @return True if all buyins have finalised.
+    */
     function allFinalised() public view returns (bool)
     {
         return now >= endTime && totalAccounted == totalFinalised;
     }
 
-    /// True is ether recieved greater than softcap.
+   /**
+    * @return True if ether recieved greater than softcap.
+    */
     function softCapMet() public view returns (bool) { return totalReceived >= usdWEISoftCap; }
 
-    /// Recover address from signature
+   /**
+    * @dev Recover address from msg signature.
+    * @param msgHash Hash of terms and conditions.
+    * @param v
+    * @param r
+    * @param s
+    */
     function recoverAddr(bytes32 msgHash, uint8 v, bytes32 r, bytes32 s) public pure returns (address) {
         bytes memory prefix = "\x19Ethereum Signed Message:\n32";
         bytes32 prefixedHash = keccak256(abi.encodePacked(prefix, msgHash));
         return ecrecover(prefixedHash, v, r, s);
     }
 
-    /// Check if signature has been signed by passed in address
+   /**
+    * @dev Check if signature has been signed by _addr.
+    * @param _addr Address to check if signature has been signed by.
+    * @param msgHash Hash of terms and conditions.
+    * @param v
+    * @param r
+    * @param s
+    */
     function isSigned(
         address _addr,
         bytes32 msgHash,
@@ -371,6 +444,13 @@ contract SecondPriceAuction {
         return ecrecover(prefixedHash, v, r, s) == _addr;
     }
 
+   /**
+    * @dev Check if who address can purchase via buyin function.
+    * @param who Address to check if signature has been signed b and KYC has passed.
+    * @param v
+    * @param r
+    * @param s
+    */
     function eligibleCall(
         address who,
         uint8 v,
@@ -390,7 +470,10 @@ contract SecondPriceAuction {
     }
 
     /* ---- Private Functions ---- */
-    /// Returns true if the sender of this transaction is a basic account.
+   /**
+    * @return True if account has passed KYC.
+    * @param _who Address to check.
+    */
     function isBasicAccount(address _who) private view returns (bool) {
         uint senderCodeSize;
         assembly {
@@ -399,6 +482,10 @@ contract SecondPriceAuction {
         return senderCodeSize == 0;
     }
 
+   /**
+    * @dev Converts address to bytes format.
+    * @param a Address to convert.
+    */
     function toBytes(address a)
         private
         pure
@@ -412,7 +499,7 @@ contract SecondPriceAuction {
         }
     }
 
-    // Modifiers:
+    /* ---- Function Modifiers ---- */
     /// Ensure the sale is ongoing.
     modifier whenActive { require(isActive()); _; }
 

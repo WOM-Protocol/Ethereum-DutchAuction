@@ -69,6 +69,7 @@ contract TokenVesting is Ownable {
         tokenContract = Token(_tokenWOM);
     }
 
+    /* ---- Public Functions ---- */
    /**
     * @dev Owner registers pre-sale amount and agreed vesting terms.
     * @param _revocable Whether owner can revoke unreleased tokens if a breach in vesting contract.
@@ -305,7 +306,7 @@ contract TokenVesting is Ownable {
         }
     }
 
-    /* ---- Funcion Modifiers ---- */
+    /* ---- Function Modifiers ---- */
     modifier notRegistered(address _who) { require(!registered[_who]); _; }
     modifier notEmptyAddress(address _who) { require(_who != address(0)); _; }
     modifier notEmptyUint(uint _uint) { require(_uint != 0); _; }
