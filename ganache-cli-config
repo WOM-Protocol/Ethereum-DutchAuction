@@ -1,0 +1,2 @@
+./node_modules/.bin/testrpc-sc -g 0x01 -l 0xfffffffffff -e 1000000000000000 -a 11
+./node_modules/.bin/solidity-coverage
