@@ -301,7 +301,6 @@ contract TokenVesting is Ownable {
     * @return converts bytes to address.
     */
     function bytesToAddress(bytes bys) private view returns (address addr) {
-        address addr;
         assembly {
         addr := mload(add(bys, 20))
         }
