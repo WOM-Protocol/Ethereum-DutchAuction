@@ -98,7 +98,7 @@ contract ERC20BurnableAndMintable is ERC20Interface {
         returns (bool success)
     {
         require(_amount > 0);
-        allowed[msg.sender][_spender] = _amount;
+        allowed[msg.sender][_spender] = allowed[msg.sender][_spender].add(_amount);
         emit Approval(msg.sender, _spender, _amount);
         return true;
     }

@@ -13,8 +13,8 @@ import '../Libraries/Ownable.sol';
  * Delegates can be added and removed only by the contract owner.
  */
 contract MultiCertifier {
-  function certified(address _who) public constant returns (bool);
-  function getCertifier(address _who) public constant returns (address);
+  function certified(address _who) public view returns (bool);
+  function getCertifier(address _who) public view returns (address);
 }
 
 /// @title Certifier Handler
