@@ -1,15 +1,19 @@
 {
-  "name": "package101",
+  "name": "Package Install",
   "version": "0.0.1",
   "description": "Package for dependencies",
   "main": "truffle-config.js",
   "repository": {
     "type": "git",
-    "url": "https://github.com/WOM-Protocol/WOM-Ethereum"
+    "url": "https://github.com/WOM-Protocol/Ethereum-DutchAuction"
   },
   "directories": {
     "test": "test"
   },
+"scripts": {
+    "initalize": "./node_modules/.bin/testrpc-sc -g 0x01 -l 0xfffffffffff -e 1000000000000000 -a 11",
+    "coverage": "./node_modules/.bin/solidity-coverage"
+},
   "dependencies": {
     "chai": "^4.2.0",
     "chai-bignumber": "^2.0.2",
