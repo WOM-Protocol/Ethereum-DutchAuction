@@ -3,6 +3,10 @@
   "version": "0.0.1",
   "description": "Package for dependencies",
   "main": "truffle-config.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/WOM-Protocol/WOM-Ethereum"
+  },
   "directories": {
     "test": "test"
   },

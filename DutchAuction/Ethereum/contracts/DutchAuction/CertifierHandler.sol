@@ -2,7 +2,7 @@
 //! By Parity Technologies, 2017.
 //! Released under the Apache Licence 2.
 
-pragma solidity 0.4.24;
+pragma solidity ^0.4.24;
 
 import '../Libraries/Ownable.sol';
 

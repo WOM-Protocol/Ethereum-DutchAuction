@@ -1,7 +1,7 @@
 //! Copyright Parity Technologies, 2017.
 //! Released under the Apache Licence 2.
 
-pragma solidity 0.4.24;
+pragma solidity ^0.4.24;
 
 
 contract Token {
@@ -83,9 +83,6 @@ contract SecondPriceAuction {
     /* ---- Public Functions ---- */
    /**
     * @dev User buys in to auction, and throws if not active and when refund needed.
-    * @param v
-    * @param r
-    * @param s
     */
     function buyin(uint8 v, bytes32 r, bytes32 s)
         public
@@ -237,7 +234,7 @@ contract SecondPriceAuction {
 
    /**
     * @dev Admin can change softcap USDWEI value of 10m if bull run occurs.
-    * @param _usdWEI Amount of WEI to 10m USD.
+    * @param _usdWEISoftCap Amount of WEI to 10m USD.
     */
     function setUSDSoftCap(uint _usdWEISoftCap)
         public
@@ -410,9 +407,6 @@ contract SecondPriceAuction {
    /**
     * @dev Recover address from msg signature.
     * @param msgHash Hash of terms and conditions.
-    * @param v
-    * @param r
-    * @param s
     */
     function recoverAddr(bytes32 msgHash, uint8 v, bytes32 r, bytes32 s) public pure returns (address) {
         bytes memory prefix = "\x19Ethereum Signed Message:\n32";
@@ -424,9 +418,6 @@ contract SecondPriceAuction {
     * @dev Check if signature has been signed by _addr.
     * @param _addr Address to check if signature has been signed by.
     * @param msgHash Hash of terms and conditions.
-    * @param v
-    * @param r
-    * @param s
     */
     function isSigned(
         address _addr,
@@ -447,9 +438,6 @@ contract SecondPriceAuction {
    /**
     * @dev Check if who address can purchase via buyin function.
     * @param who Address to check if signature has been signed b and KYC has passed.
-    * @param v
-    * @param r
-    * @param s
     */
     function eligibleCall(
         address who,
@@ -471,7 +459,7 @@ contract SecondPriceAuction {
 
     /* ---- Private Functions ---- */
    /**
-    * @return True if account has passed KYC.
+    * @return True if address is not a contract address.
     * @param _who Address to check.
     */
     function isBasicAccount(address _who) private view returns (bool) {
