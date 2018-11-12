@@ -1,0 +1,13 @@
+sudo: required
+dist: trusty
+language: node_js
+node_js:
+  - '7'
+install:
+  - npm install -g truffle
+  - npm install -g ganache-cli
+  - npm install
+script:
+  - npm run initialize
+after_script:
+  - npm run coverage && cat coverage/lcov.info | coveralls
