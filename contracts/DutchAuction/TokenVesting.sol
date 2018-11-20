@@ -40,7 +40,7 @@ contract TokenVesting is Ownable {
     /* ---- Storage ---- */
     address public tokenAddress;
     address public auctionAddress;
-    Token public tokenContract;
+    Token public TrustedTokenContract;
 
     bool public locked;
     bool public isFinalized;
@@ -66,7 +66,7 @@ contract TokenVesting is Ownable {
      */
     constructor(address _tokenWOM) public notEmptyAddress(_tokenWOM) {
         tokenAddress = _tokenWOM;
-        tokenContract = Token(_tokenWOM);
+        TrustedTokenContract = Token(_tokenWOM);
     }
 
     /* ---- Public Functions ---- */
@@ -142,7 +142,7 @@ contract TokenVesting is Ownable {
 
         totalReleased = totalReleased.add(_releaseAmount);
 
-        tokenContract.transferFrom(auctionAddress, msg.sender, _releaseAmount);
+        TrustedTokenContract.transferFrom(auctionAddress, msg.sender, _releaseAmount);
 
         if (totalAccounted == totalReleased) {
             isFinalized = true;
@@ -171,7 +171,7 @@ contract TokenVesting is Ownable {
 
         revoked[_who] = true;
 
-        tokenContract.transferFrom(auctionAddress, _emergencyAddress, _unreleased);
+        TrustedTokenContract.transferFrom(auctionAddress, _emergencyAddress, _unreleased);
 
         emit TokenVestingRevoked(_who, _unreleased);
     }
@@ -261,10 +261,24 @@ contract TokenVesting is Ownable {
         onlyOwner
     {
         require(locked);
-        uint256 balanceOf = tokenContract.allowance(auctionAddress, this);
-        tokenContract.transferFrom(auctionAddress, _emergencyAddress, balanceOf);
+        uint256 balanceOf = TrustedTokenContract.allowance(auctionAddress, this);
+        TrustedTokenContract.transferFrom(auctionAddress, _emergencyAddress, balanceOf);
         emit EmergencyDrain(_emergencyAddress, balanceOf);
     }
+
+    /**
+     * @dev Owner can drain set _amount of tokens incase a vulnerability is found, and incase emergencyDrain() fails with call to external contract.
+     * @param _emergencyAddress Address where total unrealeased tokens will be transferred too.
+     * @param _amount Amount of tokens to be drained from allowance.
+     */
+     function emergencyDrainBackup(address _emergencyAddress, uint256 _amount)
+         public
+         onlyOwner
+     {
+         require(locked);
+         TrustedTokenContract.transferFrom(auctionAddress, _emergencyAddress, _amount);
+         emit EmergencyDrain(_emergencyAddress, _amount);
+     }
 
     /* ---- Private Functions ---- */
    /**

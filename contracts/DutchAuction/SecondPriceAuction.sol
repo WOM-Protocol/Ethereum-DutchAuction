@@ -3,6 +3,8 @@
 
 pragma solidity ^0.4.24;
 
+import "../Libraries/SafeMath.sol";
+
 
 contract Token {
     function transfer(address _to, uint256 _value) public returns (bool success);
@@ -29,6 +31,8 @@ contract Certifier {
  Requires softcap to be met, before finalisation, and if finalisation is not met a refund will be available.
  */
 contract SecondPriceAuction {
+    using SafeMath for uint256;
+
     /* ---- Events ---- */
     /// @dev Someone bought in at a particular max-price.
     event Buyin(address indexed who, uint accounted, uint received, uint price);
@@ -77,7 +81,7 @@ contract SecondPriceAuction {
         admin = _admin;
         beginTime = _beginTime;
         tokenCap = _tokenCap;
-        endTime = beginTime + 15 days;
+        endTime = beginTime.add(15 days);
     }
 
     /* ---- Public Functions ---- */
@@ -94,7 +98,7 @@ contract SecondPriceAuction {
     {
         if (currentBonus > 0 && currentBonusRound <= 4) {
         // Bonus is currently active...
-            if (now >= beginTime + BONUS_MAX_DURATION) {
+            if (now >= beginTime.add(BONUS_MAX_DURATION)) {
                 currentBonus = 0;
                 currentBonusRound++;
             } else if (now >= beginTime + (BONUS_MAX_DURATION_ROUND*currentBonusRound)) {
