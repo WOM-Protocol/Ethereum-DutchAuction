@@ -116,8 +116,8 @@ contract SecondPriceAuction {
         require(!refund);
 
         // record the acceptance.
-        buyins[msg.sender].accounted += uint128(accounted);
-        buyins[msg.sender].received += uint128(msg.value);
+        buyins[msg.sender].accounted = accounted.add(buyins[msg.sender].accounted);
+        buyins[msg.sender].received = msg.value.add(buyins[msg.sender].received);
         totalAccounted = totalAccounted.add(accounted);
         totalReceived = totalReceived.add(msg.value);
         emit Buyin(msg.sender, accounted, msg.value, price);
@@ -129,17 +129,17 @@ contract SecondPriceAuction {
     * @param _received Amount of ether that the pre-sale member contributed.
     * @param _appliedBonus Bonus agreed in pre-sale agreement.
     */
-    function inject(address _who, uint128 _received, uint128 _appliedBonus)
+    function inject(address _who, uint256 _received, uint256 _appliedBonus)
         public
         onlyAdmin
         onlyBasic(_who)
         beforeBeginning
     {
-        uint128 bonus = _received * uint128(_appliedBonus) / 100;
-        uint128 accounted = _received + bonus;
+        uint256 bonus = _received.mul(_appliedBonus).div(100);
+        uint256 accounted = _received.add(bonus);
 
-        buyins[_who].accounted += accounted;
-        buyins[_who].received += _received;
+        buyins[_who].accounted = accounted.add(buyins[_who].accounted);
+        buyins[_who].received = _received.add(buyins[_who].received);
         buyins[_who].presale = true;
         totalAccounted = totalAccounted.add(accounted);
         totalReceived = totalReceived.add(_received);
@@ -155,8 +155,8 @@ contract SecondPriceAuction {
         onlyAdmin
         beforeBeginning
     {
-        totalAccounted -= buyins[_who].accounted;
-        totalReceived -= buyins[_who].received;
+        totalAccounted = totalAccounted.sub(buyins[_who].accounted);
+        totalReceived = totalReceived.sub(buyins[_who].received);
         delete buyins[_who];
         emit Uninjected(_who);
     }
@@ -537,8 +537,8 @@ contract SecondPriceAuction {
 
     // State:
     struct Account {
-        uint128 accounted;    // including bonus & hit
-        uint128 received;    // just the amount received, without bonus & hit
+        uint256 accounted;    // including bonus & hit
+        uint256 received;    // just the amount received, without bonus & hit
         bool presale; // if the investor was involved in presale & funds will be locked for vesting period.
     }
 

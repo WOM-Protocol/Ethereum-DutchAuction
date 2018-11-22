@@ -125,6 +125,7 @@ contract TokenVesting is Ownable {
     */
     function release()
         public
+        notLocked
     {
         require(registered[msg.sender]);
 
