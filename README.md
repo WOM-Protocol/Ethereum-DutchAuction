@@ -16,7 +16,7 @@ The token contract will release 350m WOM tokens available for purchase in the du
 * Length: 15 days
 * Tokens: 350,000,000 WOM
 * Funding Currency: Ether
-* Price: 350m/TotalContibutedEther
+* Price: 350m/TotalContributedEther
 * Bonus:
     * Day 1 : 20%
     * Day 2 : 15%
@@ -51,9 +51,8 @@ All of our Smart Contracts have been documented and are viewable [here](https://
 
 
 ## WOM Documents
-You can read the current WOMToken light paper  [here](https://uploads-ssl.webflow.com/5a5741a320870d0001d8658d/5b8d58d0cbd0552b7c24eec2_WT-LPv5.3.pdf).    
-You can read the current WOMToken business deck [here](https://uploads-ssl.webflow.com/5a5741a320870d0001d8658d/5b992b71a66a8aef380cca82_WT-Bv3.2.5%20small.pdf).  
-You can read the current WOMToken whitepaper [here](https://uploads-ssl.webflow.com/5a5741a320870d0001d8658d/5b87b38f0c235c7fd9e22350_WT-WPv0.9%20small.pdf).  
+You can read the current WOMToken light paper[here](https://womprotocol.io/pdf/wom-lightpaper.pdf).     
+You can read the current WOMToken whitepaper [here](https://womprotocol.io/pdf/wom-whitepaper.pdf).  
 
 ## Contact and Additional Information
 Check out our website for more information on WOMToken.  
