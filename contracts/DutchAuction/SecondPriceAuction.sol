@@ -101,7 +101,7 @@ contract SecondPriceAuction {
             if (now >= beginTime.add(BONUS_MAX_DURATION)) {
                 currentBonus = 0;
                 currentBonusRound++;
-            } else if (now >= beginTime + (BONUS_MAX_DURATION_ROUND*currentBonusRound)) {
+            } else if (now >= beginTime.add(BONUS_MAX_DURATION_ROUND.mul(currentBonusRound))) {
                 currentBonus -= 5;
                 currentBonusRound++;
             }
@@ -118,8 +118,8 @@ contract SecondPriceAuction {
         // record the acceptance.
         buyins[msg.sender].accounted += uint128(accounted);
         buyins[msg.sender].received += uint128(msg.value);
-        totalAccounted += accounted;
-        totalReceived += msg.value;
+        totalAccounted = totalAccounted.add(accounted);
+        totalReceived = totalReceived.add(msg.value);
         emit Buyin(msg.sender, accounted, msg.value, price);
     }
 
@@ -141,8 +141,8 @@ contract SecondPriceAuction {
         buyins[_who].accounted += accounted;
         buyins[_who].received += _received;
         buyins[_who].presale = true;
-        totalAccounted += accounted;
-        totalReceived += _received;
+        totalAccounted = totalAccounted.add(accounted);
+        totalReceived = totalReceived.add(_received);
         emit Injected(_who, accounted, _received);
     }
 
@@ -174,13 +174,13 @@ contract SecondPriceAuction {
         onlyBuyins(_who)
     {
         if (endPrice == 0) {
-            endPrice = (totalAccounted * DIVISOR / tokenCap);
+            endPrice = (totalAccounted.mul(DIVISOR).div(tokenCap));
             emit Ended(endPrice);
         }
 
         uint total = buyins[_who].accounted;
-        uint tokens = (total / endPrice) * DIVISOR;
-        totalFinalised += total;
+        uint tokens = (total.div(endPrice)).mul(DIVISOR);
+        totalFinalised = totalFinalised.add(total);
         bool presale = buyins[_who].presale;
 
         delete buyins[_who];
@@ -214,7 +214,7 @@ contract SecondPriceAuction {
         emit SoftCapNotReached(totalReceived, usdWEISoftCap, _who);
 
         uint total = buyins[_who].received;
-        totalFinalised += total;
+        totalFinalised = totalFinalised.add(total);
         delete buyins[_who];
         _who.transfer(total);
 
@@ -308,7 +308,7 @@ contract SecondPriceAuction {
         if (hoursPassed() == 0) {
             return usdWEI;
         }
-        return (usdWEI * 33200 / (hoursPassed() + 80) - usdWEI * 65) / 350;
+        return (usdWEI.mul(33200).div((hoursPassed().add(80))).sub(usdWEI.mul(65))).div(350);
     }
 
    /**
@@ -319,7 +319,7 @@ contract SecondPriceAuction {
         view
         returns (uint)
     {
-        return (now - beginTime) / 1 hours;
+        return (now.sub(beginTime)).div(1 hours);
     }
 
    /**
@@ -331,11 +331,11 @@ contract SecondPriceAuction {
         whenActive
         returns (uint tokens)
     {
-        uint _currentCap = totalAccounted / currentPrice();
+        uint _currentCap = totalAccounted.div(currentPrice());
         if (_currentCap >= tokenCap) {
             return 0;
         }
-        return tokenCap - _currentCap;
+        return tokenCap.sub(_currentCap);
     }
 
    /**
@@ -347,7 +347,7 @@ contract SecondPriceAuction {
         whenActive
         returns (uint spend)
     {
-        return tokenCap * currentPrice() - totalAccounted;
+        return tokenCap.mul(currentPrice()).sub(totalAccounted);
     }
 
    /**
@@ -364,10 +364,10 @@ contract SecondPriceAuction {
         uint _bonus = bonus(_value);
 
         price = currentPrice();
-        accounted = _value + _bonus;
+        accounted = _value.add(_bonus);
 
         uint available = tokensAvailable();
-        uint tokens = accounted / price;
+        uint tokens = accounted.div(price);
         refund = (tokens > available);
     }
 
@@ -382,7 +382,7 @@ contract SecondPriceAuction {
         whenActive
         returns (uint extra)
     {
-        return _value * uint(currentBonus) / 100;
+        return _value.mul(uint(currentBonus)).div(100);
     }
 
    /**

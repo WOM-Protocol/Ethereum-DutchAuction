@@ -6,8 +6,6 @@
 
 # WOMProtocol-Tokensale
 
-[![CircleCI]() [![Coverage Status]()
-
 All the contracts and tests related to the token sale for the WOM token.
 
 ## Details
